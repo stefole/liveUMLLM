@@ -1,6 +1,8 @@
 # liveUMLLM
 VibeCheck
 
+Install: This is a VS Code extension that is installed from .vsix (backup.vsix)! 
+
 Explain code by looking at it. VibeCheck turns Python, JavaScript, TypeScript, C, C++, and Java source into a clean, color-coded diagram in the VS Code sidebar — with AI-written explanations as the centerpiece.
 
 Views
