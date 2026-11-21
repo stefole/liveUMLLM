@@ -3,7 +3,7 @@
   "displayName": "VibeCheck",
   "description": "Visual, AI-explained code navigation for Python, JavaScript, TypeScript, C, C++ and Java — a color-coded Explain view, function flowcharts, and class diagrams.",
   "version": "2.3.0",
-  "publisher": "bitlab",
+  "publisher": "hack21",
   "repository": {
     "type": "git",
     "url": "https://github.com/codenaveed/liveuml.git"

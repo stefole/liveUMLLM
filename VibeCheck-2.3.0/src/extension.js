@@ -123,7 +123,7 @@ class PlantUmlServerManager {
 }
 
 async function activate(context) {
-    const ext = vscode.extensions.getExtension('bitlab.vibecheck');
+    const ext = vscode.extensions.getExtension('hack21.vibecheck');
     const extVersion = ext?.packageJSON?.version || 'unknown';
     logger.log(`VibeCheck activating — v${extVersion}, VS Code ${vscode.version}, platform=${process.platform}, arch=${process.arch}`);
     logger.log(`Config: javaPath="${vscode.workspace.getConfiguration('vibecheck').get('javaPath', 'java')}", classExcludePatterns="${vscode.workspace.getConfiguration('vibecheck').get('classExcludePatterns', 'node_modules, build, bin, dist, target')}", debug=${logger.VERBOSE}`);
@@ -1335,7 +1335,7 @@ class VibeCheckSidebar {
                 vscode.Uri.joinPath(this.context.extensionUri, 'mermaid', 'mermaid.js')
             ).toString();
         }
-        const extensionVersion = vscode.extensions.getExtension('bitlab.vibecheck')?.packageJSON?.version || '1.0.7';
+        const extensionVersion = vscode.extensions.getExtension('hack21.vibecheck')?.packageJSON?.version || '1.0.7';
         return getWebviewHtml(mermaidScriptUri, extensionVersion);
     }
 }
