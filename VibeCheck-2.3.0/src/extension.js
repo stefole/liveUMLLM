@@ -11,6 +11,7 @@ const logger = require('./logger');
 const summaries = require('./summaries');
 const llmConfig = require('./llmConfig');
 const analysis = require('./analysis');
+const explain = require('./explain');
 const { buildFileOverview } = require('./fileOverview');
 const { buildCodeMap } = require('./codeMap');
 
@@ -62,14 +63,14 @@ class PlantUmlServerManager {
     }
 
     async start() {
-        const config = vscode.workspace.getConfiguration('liveUml');
+        const config = vscode.workspace.getConfiguration('vibecheck');
         const javaPath = config.get('javaPath', 'java');
         const jarPath = path.join(__dirname, '..', 'plantuml', 'plantuml.jar');
 
         try {
             this.port = await core.findAvailablePort(8080);
             logger.log(`Starting PlantUML server on port ${this.port} with java=${javaPath}`);
-            console.log(`Live UML: Starting PlantUML server on port ${this.port}`);
+            console.log(`VibeCheck: Starting PlantUML server on port ${this.port}`);
 
             this.process = spawn(javaPath, [
                 '-Djava.awt.headless=true',
@@ -122,14 +123,14 @@ class PlantUmlServerManager {
 }
 
 async function activate(context) {
-    const ext = vscode.extensions.getExtension('bitlab.live-uml');
+    const ext = vscode.extensions.getExtension('bitlab.vibecheck');
     const extVersion = ext?.packageJSON?.version || 'unknown';
-    logger.log(`Live UML activating — v${extVersion}, VS Code ${vscode.version}, platform=${process.platform}, arch=${process.arch}`);
-    logger.log(`Config: javaPath="${vscode.workspace.getConfiguration('liveUml').get('javaPath', 'java')}", classExcludePatterns="${vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target')}", debug=${logger.VERBOSE}`);
+    logger.log(`VibeCheck activating — v${extVersion}, VS Code ${vscode.version}, platform=${process.platform}, arch=${process.arch}`);
+    logger.log(`Config: javaPath="${vscode.workspace.getConfiguration('vibecheck').get('javaPath', 'java')}", classExcludePatterns="${vscode.workspace.getConfiguration('vibecheck').get('classExcludePatterns', 'node_modules, build, bin, dist, target')}", debug=${logger.VERBOSE}`);
     const jarPath = path.join(__dirname, '..', 'plantuml', 'plantuml.jar');
     const fs = require('fs');
     logger.log(`PlantUML jar ${fs.existsSync(jarPath) ? 'present' : 'MISSING'} at ${jarPath}`);
-    console.log('Live UML Extension Active');
+    console.log('VibeCheck Extension Active');
 
     plantUmlServer = new PlantUmlServerManager();
     plantUmlServer.start();
@@ -143,34 +144,43 @@ async function activate(context) {
     // Eager loading all 6 language WASM files (~7 MB) at activation blocks
     // the event loop with WebAssembly compilation for ~20-30 seconds.
     // See generate() where !tsProvider.isReady() triggers lazy loading.
-    sidebarProvider = new LiveUmlSidebar(context);
+    sidebarProvider = new VibeCheckSidebar(context);
     try { await sidebarProvider.loadApiKey(); }
     catch { logger.warn('Saved summary key could not be loaded; configure it in the sidebar settings.'); }
+    const syncColorTheme = () => {
+        sidebarProvider.diagramTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light ? 'light' : 'dark';
+        sidebarProvider.post({ type: 'theme', theme: sidebarProvider.diagramTheme });
+    };
+    syncColorTheme();
+    context.subscriptions.push(vscode.window.onDidChangeActiveColorTheme(() => {
+        syncColorTheme();
+        if (sidebarProvider?.isViewVisible()) sidebarProvider.refresh();
+    }));
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
-            'liveUmlSidebar-webview',
+            'vibecheck-webview',
             sidebarProvider,
             { webviewOptions: { retainContextWhenHidden: true } }
         )
     );
 
-    context.subscriptions.push(vscode.commands.registerCommand('liveUml.show', () => {
-        vscode.commands.executeCommand('workbench.view.extension.live-uml');
+    context.subscriptions.push(vscode.commands.registerCommand('vibecheck.show', () => {
+        vscode.commands.executeCommand('workbench.view.extension.vibecheck');
     }));
     const statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-    statusItem.text = '$(type-hierarchy) Live UML';
-    statusItem.tooltip = 'Show Live UML sidebar';
-    statusItem.command = 'liveUml.show';
+    statusItem.text = '$(type-hierarchy) VibeCheck';
+    statusItem.tooltip = 'Show VibeCheck sidebar';
+    statusItem.command = 'vibecheck.show';
     statusItem.show();
     context.subscriptions.push(statusItem);
 
-    context.subscriptions.push(vscode.commands.registerCommand('liveUml.refresh', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('vibecheck.refresh', () => {
         if (sidebarProvider && sidebarProvider.isViewVisible()) sidebarProvider.refresh();
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('liveUml.regenerateSummary', () => sidebarProvider?.regenerateSummary()));
+    context.subscriptions.push(vscode.commands.registerCommand('vibecheck.regenerateSummary', () => sidebarProvider?.regenerateSummary()));
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration('liveUml.llm') && sidebarProvider && !sidebarProvider._savingSettings) {
+        if (event.affectsConfiguration('vibecheck.llm') && sidebarProvider && !sidebarProvider._savingSettings) {
             sidebarProvider._summaryAbort?.abort();
             summaries.clearCache();
             sidebarProvider._lastFunctionHash = null;
@@ -225,7 +235,7 @@ async function activate(context) {
                         } catch (e) { /* skip unreadable files */ }
                     }
                 } catch (e) {
-                    console.warn('Live UML: direct file search failed, falling back to symbol provider', e);
+                    console.warn('VibeCheck: direct file search failed, falling back to symbol provider', e);
                 }
             }
         }
@@ -268,15 +278,6 @@ async function activate(context) {
             sidebarProvider._lastClassHash = null;
             sidebarProvider.refresh();
         }
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('extension.selectStateVar', async (stateVar) => {
-        if (!stateVar || !sidebarProvider) return;
-        const functionName = sidebarProvider.currentFunctionName;
-        if (functionName) {
-            sidebarProvider.selectedStateVars.set(functionName, stateVar);
-        }
-        sidebarProvider.refresh();
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('extension.openFunction', async (functionName) => {
@@ -384,7 +385,7 @@ async function activate(context) {
 }
 
 async function validateJavaOnActivation(context) {
-    const config = vscode.workspace.getConfiguration('liveUml');
+    const config = vscode.workspace.getConfiguration('vibecheck');
     const javaPath = config.get('javaPath', 'java');
 
     try {
@@ -396,18 +397,18 @@ async function validateJavaOnActivation(context) {
         });
     } catch (err) {
         const action = await vscode.window.showWarningMessage(
-            `Live UML: Java not found at "${javaPath}". PlantUML diagram generation requires Java.`,
+            `VibeCheck: Java not found at "${javaPath}". PlantUML diagram generation requires Java.`,
             'Open Settings', 'Learn More'
         );
         if (action === 'Open Settings') {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'liveUml.javaPath');
+            vscode.commands.executeCommand('workbench.action.openSettings', 'vibecheck.javaPath');
         } else if (action === 'Learn More') {
             vscode.window.showInformationMessage('PlantUML requires Java. Please install it and set the path in settings.');
         }
     }
 }
 
-class LiveUmlSidebar {
+class VibeCheckSidebar {
     static _requestCounter = 0;
 
     constructor(context) {
@@ -417,9 +418,9 @@ class LiveUmlSidebar {
         this.currentFunctionName = null;
         this.currentClassName = null;
         this.currentDiagramType = 'file';
-        const savedMode = context.globalState?.get('diagramMode', 'plantuml');
-        this.currentDiagramMode = savedMode === 'mermaid' ? 'mermaid' : 'plantuml';
-        this.diagramTheme = 'dark';          // 'dark' | 'light'
+        const savedMode = context.globalState?.get('diagramMode', 'explain');
+        this.currentDiagramMode = ['plantuml', 'mermaid', 'explain'].includes(savedMode) ? savedMode : 'explain';
+        this.diagramTheme = 'dark';          // 'dark' | 'light'; auto-synced from the VS Code color theme on activate
         this._viewVisible = false;
         this._generationInProgress = false;
         this._lastFunctionHash = null;
@@ -429,8 +430,6 @@ class LiveUmlSidebar {
         this._lastClassHash = null;
         this._classCache = new Map(); // key: ext (combined) and `light:${ext}:${uri}` per file – ParsedClass[]; invalidated on file events
         this._fileContentCache = new Map(); // key: `content:${ext}:${uri}` – raw UTF-8 file content; invalidated alongside _classCache
-        this._lastSelectedStateVar = null;
-        this.selectedStateVars = new Map();
         this._workspaceFileCountCache = { ext: '', count: 0 };
     }
 
@@ -439,21 +438,21 @@ class LiveUmlSidebar {
     _publicSettings() {
         const config = this._summaryConfig();
         return {
-            javaPath: vscode.workspace.getConfiguration('liveUml').get('javaPath', 'java'),
-            classExcludePatterns: vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target'),
+            javaPath: vscode.workspace.getConfiguration('vibecheck').get('javaPath', 'java'),
+            classExcludePatterns: vscode.workspace.getConfiguration('vibecheck').get('classExcludePatterns', 'node_modules, build, bin, dist, target'),
             llmEnabled: config.enabled,
             llmUpdateMode: config.updateMode,
             llmProvider: config.provider,
             llmBaseUrl: config.baseUrl,
             llmModel: config.model,
             llmTimeoutMs: config.timeoutMs,
-            llmAnalyze: vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true),
+            llmAnalyze: vscode.workspace.getConfiguration('vibecheck').get('llm.analyze', true),
             hasApiKey: !!config.apiKey
         };
     }
 
     async setDiagramMode(mode) {
-        if (!['plantuml', 'mermaid'].includes(mode)) return false;
+        if (!['plantuml', 'mermaid', 'explain'].includes(mode)) return false;
         this.currentDiagramMode = mode;
         try { await this.context.globalState?.update('diagramMode', mode); }
         catch { logger.warn('Could not save the preferred diagram renderer.'); }
@@ -461,13 +460,13 @@ class LiveUmlSidebar {
     }
 
     async loadApiKey(baseUrl) {
-        const config = vscode.workspace.getConfiguration('liveUml');
+        const config = vscode.workspace.getConfiguration('vibecheck');
         baseUrl = baseUrl || config.get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
         const name = llmConfig.secretName(baseUrl);
         let key = await this.context.secrets.get(name);
         // Only migrate the old unscoped secret into its original DeepSeek endpoint.
         if (!key && llmConfig.isDeepSeekEndpoint(baseUrl)) {
-            key = await this.context.secrets.get('liveUml.llm.apiKey');
+            key = await this.context.secrets.get('vibecheck.llm.apiKey');
             if (key) await this.context.secrets.store(name, key);
         }
         this._storedApiKeys.set(name, key || '');
@@ -476,7 +475,7 @@ class LiveUmlSidebar {
 
     async saveApiKey(value, baseUrl) {
         if (typeof value !== 'string' || !value.trim()) return;
-        baseUrl = baseUrl || vscode.workspace.getConfiguration('liveUml').get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
+        baseUrl = baseUrl || vscode.workspace.getConfiguration('vibecheck').get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
         const key = value.trim();
         const name = llmConfig.secretName(baseUrl);
         await this.context.secrets.store(name, key);
@@ -491,12 +490,12 @@ class LiveUmlSidebar {
             const saved = this._storedApiKeys.get(llmConfig.secretName(baseUrl));
             if (saved) return saved;
             if (llmConfig.isDeepSeekEndpoint(baseUrl)) {
-                return vscode.workspace.getConfiguration('liveUml').get('llm.apiKey', '') ||
-                    process.env.LIVEUML_LLM_KEY || process.env.DEEPSEEK_API_KEY || '';
+                return vscode.workspace.getConfiguration('vibecheck').get('llm.apiKey', '') ||
+                    process.env.VIBECHECK_LLM_KEY || process.env.DEEPSEEK_API_KEY || '';
             }
-            if (process.env.LIVEUML_LLM_BASE_URL &&
-                llmConfig.normalizeBaseUrl(process.env.LIVEUML_LLM_BASE_URL) === llmConfig.normalizeBaseUrl(baseUrl)) {
-                return process.env.LIVEUML_LLM_KEY || '';
+            if (process.env.VIBECHECK_LLM_BASE_URL &&
+                llmConfig.normalizeBaseUrl(process.env.VIBECHECK_LLM_BASE_URL) === llmConfig.normalizeBaseUrl(baseUrl)) {
+                return process.env.VIBECHECK_LLM_KEY || '';
             }
         } catch { /* invalid external settings: validation is surfaced when saved/tested */ }
         return '';
@@ -509,7 +508,7 @@ class LiveUmlSidebar {
         try {
             if (settings.llmApiKey?.trim()) await this.saveApiKey(settings.llmApiKey, connection.baseUrl);
             else await this.loadApiKey(connection.baseUrl);
-            const config = vscode.workspace.getConfiguration('liveUml');
+            const config = vscode.workspace.getConfiguration('vibecheck');
             const fields = { 'llm.provider': connection.provider, 'llm.baseUrl': connection.baseUrl,
                 'llm.model': connection.model, 'llm.timeoutMs': connection.timeoutMs };
             if (typeof settings.llmEnabled === 'boolean') fields['llm.enabled'] = settings.llmEnabled;
@@ -522,7 +521,7 @@ class LiveUmlSidebar {
     }
 
     _summaryConfig() {
-        const c = vscode.workspace.getConfiguration('liveUml');
+        const c = vscode.workspace.getConfiguration('vibecheck');
         const baseUrl = c.get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
         return {
             enabled: c.get('llm.enabled', true),
@@ -566,7 +565,7 @@ class LiveUmlSidebar {
 
     async _runAnalysis({ code, diagramCode, mode, labels, language, name, requestId, scope }) {
         const cfg = this._summaryConfig();
-        const enabled = vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true);
+        const enabled = vscode.workspace.getConfiguration('vibecheck').get('llm.analyze', true);
         if (!enabled) { this.post({ type: 'analysis', requestId, name, scope, skipped: true }); return; }
         if (!cfg.apiKey && !llmConfig.isLocalEndpoint(cfg.baseUrl)) { this.post({ type: 'analysis', requestId, name, scope, skipped: true }); return; }
         this._analysisAbort?.abort();
@@ -672,7 +671,7 @@ class LiveUmlSidebar {
     }
 
     resolveWebviewView(webviewView) {
-        logger.log('resolveWebviewView: Live UML sidebar webview requested');
+        logger.log('resolveWebviewView: VibeCheck sidebar webview requested');
         this.view = webviewView;
         this._viewVisible = true;
         const mermaidRoot = vscode.Uri.joinPath(this.context.extensionUri, 'mermaid');
@@ -749,7 +748,6 @@ class LiveUmlSidebar {
                     this._lastClassName = null;
                     this._lastDiagramType = null;
                     this._lastDocumentUri = null;
-                    this._lastSelectedStateVar = null;
                     if (this.currentFunctionName || this.currentClassName) {
                         await this.refresh();
                     }
@@ -827,10 +825,10 @@ class LiveUmlSidebar {
                         break;
                     }
                     if (msg.settings.javaPath !== undefined) {
-                        await vscode.workspace.getConfiguration('liveUml').update('javaPath', msg.settings.javaPath, vscode.ConfigurationTarget.Global);
+                        await vscode.workspace.getConfiguration('vibecheck').update('javaPath', msg.settings.javaPath, vscode.ConfigurationTarget.Global);
                     }
                     if (msg.settings.classExcludePatterns !== undefined) {
-                        await vscode.workspace.getConfiguration('liveUml').update('classExcludePatterns', msg.settings.classExcludePatterns, vscode.ConfigurationTarget.Global);
+                        await vscode.workspace.getConfiguration('vibecheck').update('classExcludePatterns', msg.settings.classExcludePatterns, vscode.ConfigurationTarget.Global);
                     }
                     this.view.webview.postMessage({ type: 'settingsSaved' });
                     await this.refresh();
@@ -876,7 +874,7 @@ class LiveUmlSidebar {
 
         if (ext) {
             if (this._workspaceFileCountCache.ext !== ext) {
-                const excludeDirs = (vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target') || '')
+                const excludeDirs = (vscode.workspace.getConfiguration('vibecheck').get('classExcludePatterns', 'node_modules, build, bin, dist, target') || '')
                     .split(',')
                     .map(s => s.trim())
                     .filter(Boolean);
@@ -922,7 +920,7 @@ class LiveUmlSidebar {
             summaryEnabled: this._summaryConfig().enabled,
             summaryUpdateMode: this._summaryConfig().updateMode,
             analysisEnabled: this._summaryConfig().enabled &&
-                vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true)
+                vscode.workspace.getConfiguration('vibecheck').get('llm.analyze', true)
         });
 
         logger.debug(`refresh(): will generate for target=${newFunctionName || newClassName}, type=${this.currentDiagramType}`);
@@ -948,12 +946,13 @@ class LiveUmlSidebar {
     post(msg) { if (this.view) this.view.webview.postMessage(msg); }
 
     async generate(targetName, type) {
-        const requestId = ++LiveUmlSidebar._requestCounter;
+        const requestId = ++VibeCheckSidebar._requestCounter;
         this._latestGenerationId = requestId;
         let pendingSummary = null;
         logger.log(`generate(${targetName}, ${type}) starting — requestId=${requestId}, generationInProgress=${this._generationInProgress}`);
 
-        const visualizer = new Visualizer(this.currentDiagramMode);
+        const isExplain = this.currentDiagramMode === 'explain';
+        const visualizer = new Visualizer(isExplain ? 'mermaid' : this.currentDiagramMode);
         visualizer.setRequestId(requestId);
 
         try {
@@ -968,17 +967,77 @@ class LiveUmlSidebar {
             let diagramCode = '';
             let hashSource = '';
             let classCount = 0;
-            let externalGuesses = [];
-            let stateVars = [];
-            let activeStateVar = null;
             let serverUrl = null;
             let fileNodes = [];
             let codeMapEntries = [];
             let analysisCode = '';
             let analysisLabels = [];
+            let explainComponents = [];
             pendingSummary = null;
 
-            if (type === 'file') {
+            if (isExplain) {
+                const functions = parseFunctions(editor.document);
+                const func = type === 'file' ? null : (functions.find(f => f.name === targetName) || functions[0]);
+                const name = type === 'file' ? path.basename(editor.document.uri.fsPath || 'untitled') : (func?.name || targetName);
+                const code = type === 'file'
+                    ? numberedLines(editor.document, 0, Math.min(editor.document.lineCount, 400))
+                    : numberedLines(editor.document, func.startLine, func.endLine + 1);
+                const config = this._summaryConfig();
+                let result = null;
+                try { result = await explain.explain({ code, name, language: currentLanguage, config }); }
+                catch (error) { logger.warn(`explain(): ${String(error.message).split(config.apiKey || '\0').join('[redacted]')}`); }
+                if (!result) {
+                    if (type === 'file') {
+                        result = {
+                            mermaid: buildFileOverview(functions, { mode: 'mermaid', fileName: name }).code,
+                            components: functions.map(f => {
+                                const l0 = f.startLine;
+                                const snippet = (f.rawBody || f.body || '').split('\n').slice(0, 4).join('\n');
+                                return { id: '', label: f.name, explanation: deterministicExplanation(f.name, snippet),
+                                    category: 'compute', line: l0 + 1, snippet, line0: l0 };
+                            })
+                        };
+                    } else {
+                        const fallback = new Visualizer('mermaid').generateFlowchart(func.name, func.body, currentLanguage);
+                        result = { mermaid: fallback, components: buildCodeMap(func, currentLanguage, editor.document)
+                            .map((entry, index) => ({
+                                id: 'N' + (index + 1), label: entry.labels[0],
+                                explanation: deterministicExplanation(entry.labels[0], entry.text),
+                                category: 'compute', line: entry.line + 1, snippet: entry.text, line0: entry.line })) };
+                    }
+                }
+                diagramCode = result.mermaid;
+                explainComponents = result.components;
+                // Enrich each component with the concrete source lines it maps to,
+                // and a deterministic explanation fallback so hover/click always answers.
+                explainComponents = explainComponents.map(component => {
+                    const doc = editor.document;
+                    let snippet = '';
+                    let line0 = null;
+                    if (component.line && Number.isInteger(component.line)) {
+                        line0 = component.line - 1;
+                        if (line0 >= 0 && line0 < doc.lineCount) {
+                            const end = Math.min(line0 + 4, doc.lineCount);
+                            snippet = (() => { const lines = []; for (let i = line0; i < end; i++) lines.push(doc.lineAt(i).text); return lines.join('\n'); })();
+                        }
+                    } else if (type !== 'file' && func) {
+                        line0 = func.startLine;
+                        snippet = (func.rawBody || func.body || '').slice(0, 800);
+                    }
+                    if (!component.explanation) {
+                        component.explanation = deterministicExplanation(component.label, snippet || component.label);
+                    }
+                    return { ...component, snippet, line0 };
+                });
+                hashSource = 'explain:' + editor.document.getText() + diagramCode;
+                const newHash = this._computeFunctionHash(hashSource);
+                if (this._lastFunctionHash === newHash && this._lastDiagramType === type &&
+                    this._lastDocumentUri === editor.document.uri.toString()) {
+                    logger.debug('generate(): explain unchanged, skipping render');
+                    return;
+                }
+                this._lastFunctionHash = newHash;
+            } else if (type === 'file') {
                 const functions = parseFunctions(editor.document);
                 const overview = buildFileOverview(functions, { mode: this.currentDiagramMode,
                     fileName: path.basename(editor.document.uri.fsPath || 'untitled') });
@@ -1035,68 +1094,6 @@ class LiveUmlSidebar {
                     return;
                 }
                 this._lastClassHash = currentHash;
-            } else if (type === 'state') {
-                logger.debug('generate(): state diagram path');
-                const functions = parseFunctions(editor.document);
-                const func = functions.find(f => f.name === targetName);
-                if (!func) {
-                    logger.debug(`generate(): target function "${targetName}" not found`);
-                    return;
-                }
-                const selectedStateVar = this.selectedStateVars.get(targetName) || null;
-                pendingSummary = { name: func.name, body: func.rawBody || func.body,
-                    language: currentLanguage, startLine: func.startLine,
-                    imports: summaries.extractImports(editor.document.getText()) };
-                codeMapEntries = buildCodeMap(func, currentLanguage, editor.document);
-                analysisCode = numberedLines(editor.document, func.startLine, func.endLine + 1);
-                logger.debug(`generate(): selectedStateVar=${selectedStateVar}`);
-                if (!tsProvider.isReady()) {
-                    logger.debug('generate(): waiting for tree-sitter WASM to be ready');
-                    await tsProvider.ready();
-                    if (this._latestGenerationId !== requestId) return;
-                }
-                const result = visualizer.generateState(targetName, functions, currentLanguage, selectedStateVar);
-                externalGuesses = result.externalGuesses || [];
-                diagramCode = result.uml || result.mermaidCode || '';
-                stateVars = result.stateVars || [];
-                activeStateVar = result.activeStateVar || null;
-                logger.debug(`generate(): state result — eligible=${result.eligible}, stateVars=${JSON.stringify(stateVars)}, diagramCode.length=${diagramCode.length}`);
-                if (!result.eligible) {
-                    logger.debug('generate(): state not eligible, sending empty diagram');
-                    this._currentRequestId = requestId;
-                    this._summaryAbort?.abort();
-                    this._lastDiagramType = type;
-                    this._lastDocumentUri = editor.document.uri.toString();
-                    this._lastFunctionHash = null;
-                    this._lastSelectedStateVar = null;
-                    this.post({
-                        type: 'diagram',
-                        name: targetName,
-                        svg: '<div class="empty-state">No state transitions detected in this scope</div>',
-                        plantUml: '',
-                        mermaidCode: visualizer.isMermaid() ? diagramCode : '',
-                        diagramMode: this.currentDiagramMode,
-                        classCount: 0,
-                        scopeWarning: false,
-                        externalGuesses: [],
-                        stateVars: [],
-                        activeStateVar: null,
-                        requestId
-                    });
-                    void this._runSummary(pendingSummary, editor.document, requestId);
-                    return;
-                }
-                hashSource = targetName + (func.rawBody || func.body) + summaries.extractImports(editor.document.getText());
-                const newHash = this._computeFunctionHash(hashSource);
-                logger.debug(`generate(): state hash check — lastHash=${this._lastFunctionHash?.slice(0,8)}, newHash=${newHash.slice(0,8)}`);
-                if (this._lastFunctionHash === newHash && this.currentFunctionName === targetName &&
-                    this._lastDiagramType === type && this._lastDocumentUri === editor.document.uri.toString() &&
-                    this._lastSelectedStateVar === activeStateVar) {
-                    logger.debug('generate(): state hash unchanged, skipping render');
-                    return;
-                }
-                this._lastFunctionHash = newHash;
-                this._lastSelectedStateVar = activeStateVar;
             } else {
                 logger.debug(`generate(): ${type} diagram path`);
                 const functions = parseFunctions(editor.document);
@@ -1106,9 +1103,6 @@ class LiveUmlSidebar {
                     return;
                 }
                 diagramCode = visualizer.generateFlowchart(func.name, func.body, currentLanguage);
-                if (type === 'sequence') {
-                    diagramCode = visualizer.generateSequence(func.name, func.body, currentLanguage);
-                }
                 pendingSummary = {
                     name: func.name,
                     body: func.rawBody || func.body,
@@ -1152,10 +1146,9 @@ class LiveUmlSidebar {
 
             serverUrl = plantUmlServer ? plantUmlServer.getUrl() : null;
             logger.debug(`generate(): serverUrl=${serverUrl}, about to call visualizer.render()`);
-            const isDarkPlantUml = this.currentDiagramMode === 'plantuml' && this.diagramTheme === 'dark';
-            const renderCode = isDarkPlantUml ? palette.darkenPalette(diagramCode) : diagramCode;
+            const renderCode = this.currentDiagramMode === 'plantuml' ? palette.themedPalette(diagramCode, this.diagramTheme) : diagramCode;
             const rendered = await visualizer.render(renderCode, this.context, serverUrl, requestId);
-            if (isDarkPlantUml && rendered.svg) rendered.svg = palette.fixDarkSvg(rendered.svg);
+            if (this.currentDiagramMode === 'plantuml' && rendered.svg) rendered.svg = palette.fixThemedSvg(rendered.svg, this.diagramTheme);
             logger.debug(`generate(): visualizer.render() completed, svg.length=${rendered.svg?.length || 0}`);
 
             if (this._currentRequestId !== requestId) {
@@ -1178,11 +1171,9 @@ class LiveUmlSidebar {
                 kind: type,
                 codeMap: codeMapEntries,
                 fileNodes,
+                explainComponents,
                 classCount: classCount,
-                scopeWarning: externalGuesses && externalGuesses.length > 0,
-                externalGuesses,
-                stateVars,
-                activeStateVar,
+                scopeWarning: false,
                 requestId
             });
             if (type !== 'class' && analysisCode) {
@@ -1238,7 +1229,7 @@ class LiveUmlSidebar {
         const provider = registry.getLanguageProvider(languageId);
 
         // Build exclude glob from user setting (comma-separated directory names)
-        const excludeDirs = (vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target') || '')
+        const excludeDirs = (vscode.workspace.getConfiguration('vibecheck').get('classExcludePatterns', 'node_modules, build, bin, dist, target') || '')
             .split(',')
             .map(s => s.trim())
             .filter(Boolean);
@@ -1344,7 +1335,7 @@ class LiveUmlSidebar {
                 vscode.Uri.joinPath(this.context.extensionUri, 'mermaid', 'mermaid.js')
             ).toString();
         }
-        const extensionVersion = vscode.extensions.getExtension('bitlab.live-uml')?.packageJSON?.version || '1.0.7';
+        const extensionVersion = vscode.extensions.getExtension('bitlab.vibecheck')?.packageJSON?.version || '1.0.7';
         return getWebviewHtml(mermaidScriptUri, extensionVersion);
     }
 }
@@ -1375,6 +1366,28 @@ function numberedLines(document, fromLine, toLine) {
         lines.push(`${line + 1}: ${document.lineAt(line).text}`);
     }
     return lines.join('\n');
+}
+
+// Deterministic, always-available explanation for a diagram node. Used when the
+// model is unavailable or returns no explanation, so hover/click never goes silent.
+function deterministicExplanation(label, snippet) {
+    const lines = String(snippet || '')
+        .split('\n')
+        .map(l => l.replace(/^\s*\d+:\s*/, '').trim())
+        .filter(l => l && !l.startsWith('@') && !l.startsWith('import '));
+    const labelText = String(label || '').trim();
+    if (lines.length) {
+        // Surface a docstring or leading comment when it exists.
+        for (const l of lines) {
+            if (/^(def |class |function |fn |func |#|\/\/|\/\*|\*|"""|''')/.test(l)) {
+                const cleaned = l.replace(/^(def |class |function |fn |func )/, '').replace(/^#+\s*/, '').replace(/^\/{2,}\s*/, '').replace(/^\/?\*+\s*/, '').replace(/^"""\s*/, '').replace(/^'''\s*/, '');
+                if (cleaned) return `This is "${labelText}". ${cleaned}`;
+            }
+        }
+        const first = lines[0];
+        return `This is "${labelText}", handling: ${first.length > 120 ? first.slice(0, 120) + '…' : first}`;
+    }
+    return `This is "${labelText}". Select the node to inspect the corresponding source.`;
 }
 
 module.exports = { activate };

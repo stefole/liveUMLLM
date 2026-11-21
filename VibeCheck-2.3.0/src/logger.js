@@ -7,7 +7,7 @@ let _outputChannel = null;
 function getChannel() {
     if (!_outputChannel) {
         if (vscodeRef) {
-            _outputChannel = vscodeRef.window.createOutputChannel('Live UML');
+            _outputChannel = vscodeRef.window.createOutputChannel('VibeCheck');
         } else {
             _outputChannel = { appendLine: () => { }, show: () => { } };
         }
@@ -15,11 +15,11 @@ function getChannel() {
     return _outputChannel;
 }
 
-// Debug/verbose output is controlled by the liveUml.debug configuration.
+// Debug/verbose output is controlled by the vibecheck.debug configuration.
 function isVerbose() {
     try {
         if (vscodeRef && vscodeRef.workspace && vscodeRef.workspace.getConfiguration) {
-            return vscodeRef.workspace.getConfiguration('liveUml').get('debug', false) === true;
+            return vscodeRef.workspace.getConfiguration('vibecheck').get('debug', false) === true;
         }
     } catch (e) { /* fall through */ }
     return false;
@@ -42,7 +42,7 @@ function log(...args) {
     getChannel().appendLine(`[${_now()}] ${_fmt(...args)}`);
 }
 
-// Verbose diagnostics: only written when liveUml.debug is true.
+// Verbose diagnostics: only written when vibecheck.debug is true.
 function debug(...args) {
     if (!isVerbose()) return;
     getChannel().appendLine(`[${_now()}] DEBUG: ${_fmt(...args)}`);
@@ -56,7 +56,7 @@ function error(...args) {
     getChannel().appendLine(`[${_now()}] ERROR: ${_fmt(...args)}`);
 }
 
-// Reveal the "Live UML" channel in the Output panel. `preserveFocus` keeps
+// Reveal the "VibeCheck" channel in the Output panel. `preserveFocus` keeps
 // focus in the editor so activating the extension does not yank the user.
 function show(preserveFocus = true) {
     getChannel().show(preserveFocus);

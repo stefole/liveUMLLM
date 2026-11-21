@@ -8,42 +8,53 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
         <head>
         <style>
             :root {
-                --bg-primary: #1e1e1e;
-                --bg-secondary: #252526;
-                --bg-tertiary: #2d2d2d;
-                --bg-hover: #333333;
-                --bg-active: #37373d;
-                --text-primary: #e0e0e0;
-                --text-secondary: #969696;
-                --text-muted: #6e6e6e;
-                --accent: #4fc3f7;
-                --accent-hover: #29b6f6;
-                --accent-dim: rgba(79, 195, 247, 0.15);
-                --border: #3c3c3c;
-                --success: #4caf50;
-                --warning: #ff9800;
-                --error: #f44336;
+                --bg-primary: #1a1b26;
+                --bg-secondary: #16161e;
+                --bg-tertiary: #24283b;
+                --bg-hover: #292e42;
+                --bg-active: #3b4261;
+                --text-primary: #c0caf5;
+                --text-secondary: #a9b1d6;
+                --text-muted: #565f89;
+                --accent: #7aa2f7;
+                --accent-hover: #bb9af7;
+                --accent-dim: rgba(122, 162, 247, 0.18);
+                --border: #292e42;
+                --success: #9ece6a;
+                --warning: #e0af68;
+                --error: #f7768e;
+                --cyan: #7dcfff;
+                --violet: #bb9af7;
+                --green: #9ece6a;
+                --amber: #e0af68;
                 --radius: 8px;
                 --radius-sm: 4px;
-                --shadow: 0 2px 8px rgba(0,0,0,0.3);
-                --diagram-bg: #1e1e1e;
+                --shadow: 0 2px 8px rgba(0,0,0,0.35);
+                --diagram-bg: #1a1b26;
             }
 
             :root[data-theme="light"] {
-                --bg-primary: #ffffff;
-                --bg-secondary: #f3f3f3;
-                --bg-tertiary: #e8e8e8;
-                --bg-hover: #e0e0e0;
-                --bg-active: #d6d6d6;
-                --text-primary: #1f1f1f;
-                --text-secondary: #5a5a5a;
-                --text-muted: #8a8a8a;
-                --accent: #0288d1;
-                --accent-hover: #0277bd;
-                --accent-dim: rgba(2, 136, 209, 0.12);
-                --border: #d0d0d0;
+                --bg-primary: #fdf6e3;
+                --bg-secondary: #eee8d5;
+                --bg-tertiary: #e8e2cf;
+                --bg-hover: #e0dac5;
+                --bg-active: #d3ccb6;
+                --text-primary: #073642;
+                --text-secondary: #586e75;
+                --text-muted: #93a1a1;
+                --accent: #268bd2;
+                --accent-hover: #2aa198;
+                --accent-dim: rgba(38, 139, 210, 0.14);
+                --border: #ded8c4;
+                --success: #859900;
+                --warning: #b58900;
+                --error: #dc322f;
+                --cyan: #2aa198;
+                --violet: #6c71c4;
+                --green: #859900;
+                --amber: #b58900;
                 --shadow: 0 2px 8px rgba(0,0,0,0.08);
-                --diagram-bg: #ffffff;
+                --diagram-bg: #fdf6e3;
             }
 
             * {
@@ -425,17 +436,29 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
             .element-hover .h-line { color: var(--text-muted); font-family: ui-monospace,Consolas,monospace; font-size: 10px; }
             .element-hover .h-docs { margin-top: 5px; color: var(--text-secondary); white-space: pre-wrap; max-height: 150px; overflow: hidden; }
             .element-hover .h-issue { margin-top: 5px; color: var(--warning); }
+            .element-hover .h-explain { margin-top: 5px; color: var(--text-secondary); white-space: pre-wrap; max-height: 150px; overflow: hidden; }
 
             [data-issue].node-issue-high rect, [data-issue].node-issue-high polygon, [data-issue].node-issue-high path,
             [data-issue].node-issue-medium rect, [data-issue].node-issue-medium polygon, [data-issue].node-issue-medium path,
             [data-issue].node-issue-low rect, [data-issue].node-issue-low polygon, [data-issue].node-issue-low path {
                 stroke-width: 3px !important;
             }
-            [data-issue].node-issue-high rect, [data-issue].node-issue-high polygon, [data-issue].node-issue-high path { stroke: #ff5c5c !important; fill: #3a2026 !important; }
-            [data-issue].node-issue-medium rect, [data-issue].node-issue-medium polygon, [data-issue].node-issue-medium path { stroke: #e2a03f !important; fill: #3a3020 !important; }
-            [data-issue].node-issue-low rect, [data-issue].node-issue-low polygon, [data-issue].node-issue-low path { stroke: #d7ba7d !important; fill: #333022 !important; }
-            [data-issue] text { fill: #ffffff !important; }
+            [data-issue].node-issue-high rect, [data-issue].node-issue-high polygon, [data-issue].node-issue-high path { stroke: #f7768e !important; fill: #3a2026 !important; }
+            [data-issue].node-issue-medium rect, [data-issue].node-issue-medium polygon, [data-issue].node-issue-medium path { stroke: #e0af68 !important; fill: #3a3020 !important; }
+            [data-issue].node-issue-low rect, [data-issue].node-issue-low polygon, [data-issue].node-issue-low path { stroke: #a9b1d6 !important; fill: #24283b !important; }
+            [data-issue] text { fill: #c0caf5 !important; }
             [data-issue] { cursor: pointer; }
+
+            .node-cat-compute rect, .node-cat-compute polygon, .node-cat-compute path { stroke: #7aa2f7 !important; fill: rgba(122,162,247,.16) !important; }
+            .node-cat-decision rect, .node-cat-decision polygon, .node-cat-decision path { stroke: #e0af68 !important; fill: rgba(224,175,104,.16) !important; }
+            .node-cat-loop rect, .node-cat-loop polygon, .node-cat-loop path { stroke: #bb9af7 !important; fill: rgba(187,154,247,.16) !important; }
+            .node-cat-io rect, .node-cat-io polygon, .node-cat-io path { stroke: #9ece6a !important; fill: rgba(158,206,106,.16) !important; }
+            .node-cat-return rect, .node-cat-return polygon, .node-cat-return path { stroke: #7dcfff !important; fill: rgba(125,207,255,.16) !important; }
+            [data-theme="light"] .node-cat-compute rect, [data-theme="light"] .node-cat-compute polygon, [data-theme="light"] .node-cat-compute path { stroke: #268bd2 !important; fill: rgba(38,139,210,.10) !important; }
+            [data-theme="light"] .node-cat-decision rect, [data-theme="light"] .node-cat-decision polygon, [data-theme="light"] .node-cat-decision path { stroke: #b58900 !important; fill: rgba(181,137,0,.12) !important; }
+            [data-theme="light"] .node-cat-loop rect, [data-theme="light"] .node-cat-loop polygon, [data-theme="light"] .node-cat-loop path { stroke: #6c71c4 !important; fill: rgba(108,113,196,.12) !important; }
+            [data-theme="light"] .node-cat-io rect, [data-theme="light"] .node-cat-io polygon, [data-theme="light"] .node-cat-io path { stroke: #859900 !important; fill: rgba(133,153,0,.12) !important; }
+            [data-theme="light"] .node-cat-return rect, [data-theme="light"] .node-cat-return polygon, [data-theme="light"] .node-cat-return path { stroke: #2aa198 !important; fill: rgba(42,161,152,.12) !important; }
 
             .analysis-panel {
                 margin: 8px 12px 0;
@@ -445,6 +468,25 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 background: var(--bg-secondary);
                 font-size: 11px;
             }
+            .explain-list { margin: 10px 12px 2px; display: flex; flex-direction: column; gap: 8px; }
+            .explain-card { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--bg-secondary); cursor: pointer; transition: border-color .15s, transform .1s; }
+            .explain-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+            .ec-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+            .ec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+            .ec-label { font-weight: 600; font-size: 12px; color: var(--text-primary); }
+            .ec-cat { margin-left: auto; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+            .ec-body { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
+            .ec-snippet { margin-top: 6px; padding: 6px 8px; background: var(--bg-tertiary); border-radius: var(--radius-sm); font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10.5px; line-height: 1.45; color: var(--text-primary); overflow-x: auto; white-space: pre-wrap; }
+            .explain-card.ec-compute { border-left-color: #7aa2f7; } .explain-card.ec-compute .ec-dot { background: #7aa2f7; }
+            .explain-card.ec-decision { border-left-color: #e0af68; } .explain-card.ec-decision .ec-dot { background: #e0af68; }
+            .explain-card.ec-loop { border-left-color: #bb9af7; } .explain-card.ec-loop .ec-dot { background: #bb9af7; }
+            .explain-card.ec-io { border-left-color: #9ece6a; } .explain-card.ec-io .ec-dot { background: #9ece6a; }
+            .explain-card.ec-return { border-left-color: #7dcfff; } .explain-card.ec-return .ec-dot { background: #7dcfff; }
+            [data-theme="light"] .explain-card.ec-compute { border-left-color: #268bd2; } [data-theme="light"] .explain-card.ec-compute .ec-dot { background: #268bd2; }
+            [data-theme="light"] .explain-card.ec-decision { border-left-color: #b58900; } [data-theme="light"] .explain-card.ec-decision .ec-dot { background: #b58900; }
+            [data-theme="light"] .explain-card.ec-loop { border-left-color: #6c71c4; } [data-theme="light"] .explain-card.ec-loop .ec-dot { background: #6c71c4; }
+            [data-theme="light"] .explain-card.ec-io { border-left-color: #859900; } [data-theme="light"] .explain-card.ec-io .ec-dot { background: #859900; }
+            [data-theme="light"] .explain-card.ec-return { border-left-color: #2aa198; } [data-theme="light"] .explain-card.ec-return .ec-dot { background: #2aa198; }
             .analysis-title { display:flex; align-items:center; justify-content:space-between; color: var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
             .analysis-summary { color: var(--text-secondary); line-height:1.5; }
             .issue-row { display:flex; gap:7px; align-items:flex-start; padding:6px 0; border-top:1px solid var(--border); cursor:pointer; }
@@ -936,10 +978,10 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state: { useMaxWidth: true }
                         });
                     } else {
-                        console.warn('[LiveUML] Mermaid CDN script did not load (offline or blocked CDN). PlantUML mode still works; Mermaid mode will show an error.');
+                        console.warn('[VibeCheck] Mermaid CDN script did not load (offline or blocked CDN). PlantUML mode still works; Mermaid mode will show an error.');
                     }
                 } catch (e) {
-                    console.error('[LiveUML] mermaid.initialize() failed:', e);
+                    console.error('[VibeCheck] mermaid.initialize() failed:', e);
                 }
 
                 const vscode = acquireVsCodeApi();
@@ -966,7 +1008,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 // webview developer tools.
                 window.addEventListener('error', (e) => {
                     const detail = e.error && e.error.stack ? e.error.stack : (e.error ? e.error.message : (e.message || 'Unknown webview error'));
-                    console.error('[LiveUML] webview error:', detail);
+                    console.error('[VibeCheck] webview error:', detail);
                     try {
                         vscode.postMessage({ type: 'log', level: 'error', message: 'Webview: ' + detail });
                     } catch (err) { /* webview not ready yet */ }
@@ -974,7 +1016,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function verboseLog(...args) {
                     if (state && state.verbose) {
-                        console.log('[LiveUML]', ...args);
+                        console.log('[VibeCheck]', ...args);
                     }
                 }
                 let state = {
@@ -983,7 +1025,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     currentFunction: null,
                     currentClass: null,
                     diagramType: 'file',
-                    diagramMode: 'plantuml',
+                    diagramMode: 'explain',
                     diagramZoom: 1,
                     diagramZoomMode: 'actual',
                     diagramSvg: null,
@@ -996,9 +1038,6 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     error: null,
                     showSettings: false,
                     scopeWarning: false,
-                    externalGuesses: [],
-                    stateVars: [],
-                    activeStateVar: null,
                     stats: { totalFiles: 0, totalClasses: 0, language: '' },
                     verbose: false,
                     theme: 'dark',
@@ -1015,6 +1054,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     elementDetails: null,
                     codeMap: [],
                     fileNodes: [],
+                    explainComponents: [],
                     diagramKind: 'file',
                     fileName: '',
                     settingsSaved: false,
@@ -1072,6 +1112,12 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             vscode.setState(state);
                             break;
                         case 'navUpdate': break;
+                        case 'theme':
+                            state.theme = msg.theme === 'light' ? 'light' : 'dark';
+                            applyTheme();
+                            applyMermaidTheme();
+                            render();
+                            break;
                         case 'noEditor':
                             verboseLog('no editor, resetting state');
                             state.hasEditor = false;
@@ -1086,8 +1132,6 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.lastRequestId = 0;
                             state.isLoading = false;
                             state.error = null;
-                            state.stateVars = [];
-                            state.activeStateVar = null;
                             state.analysis = null;
                             state.analysisStatus = 'idle';
                             state.elementDetails = null;
@@ -1108,8 +1152,6 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.summary = null;
                             state.summaryStatus = 'idle';
                             state.summaryError = '';
-                            state.stateVars = [];
-                            state.activeStateVar = null;
                             render();
                             break;
                         }
@@ -1123,6 +1165,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.lastRequestId = reqId;
                             state.codeMap = Array.isArray(msg.codeMap) ? msg.codeMap : [];
                             state.fileNodes = Array.isArray(msg.fileNodes) ? msg.fileNodes : [];
+                            state.explainComponents = Array.isArray(msg.explainComponents) ? msg.explainComponents : [];
                             state.diagramKind = msg.kind || state.diagramType;
                             state.analysis = null;
                             state.analysisStatus = 'idle';
@@ -1136,19 +1179,16 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.diagramMode = msg.diagramMode || state.diagramMode;
                             state.error = null;
                             state.scopeWarning = msg.scopeWarning || false;
-                            state.externalGuesses = msg.externalGuesses || [];
-                            state.stateVars = msg.stateVars || [];
-                            state.activeStateVar = msg.activeStateVar || null;
                             if (msg.classCount !== undefined && state.diagramType === 'class') {
                                 state.stats.totalClasses = msg.classCount;
                             }
 
-                            if (state.diagramMode === 'mermaid' && msg.mermaidCode) {
+                            if ((state.diagramMode === 'mermaid' || state.diagramMode === 'explain') && msg.mermaidCode) {
                                 verboseLog('diagram: rendering mermaid...');
                                 if (!mermaidLib) {
                                     verboseLog('diagram: mermaid unavailable, showing fallback error');
                                     state.isLoading = false;
-                                    state.error = 'Mermaid library failed to load (CDN blocked or no internet). Switch to PlantUML mode, or check the Live UML output panel for details.';
+                                    state.error = 'Mermaid library failed to load (CDN blocked or no internet). Switch to PlantUML mode, or check the VibeCheck output panel for details.';
                                     render();
                                     vscode.setState(state);
                                     break;
@@ -1305,22 +1345,30 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     try {
                         mermaidLib.initialize({
                             startOnLoad: false,
-                            theme: dark ? 'dark' : 'default',
+                            theme: 'base',
                             themeVariables: dark ? {
-                                primaryColor: '#23303b',
-                                primaryTextColor: '#e0e0e0',
-                                primaryBorderColor: '#4fc3f7',
-                                lineColor: '#7f8c9b',
-                                secondaryColor: '#3a3320',
-                                tertiaryColor: '#2d2d2d',
+                                background: '#1a1b26',
+                                primaryColor: '#24283b',
+                                primaryTextColor: '#c0caf5',
+                                primaryBorderColor: '#7aa2f7',
+                                lineColor: '#565f89',
+                                secondaryColor: '#292e42',
+                                tertiaryColor: '#3b4261',
+                                noteBkgColor: '#3b3a22',
+                                noteTextColor: '#c0caf5',
+                                noteBorderColor: '#e0af68',
                                 fontSize: '14px'
                             } : {
-                                primaryColor: '#E8F4FD',
-                                primaryTextColor: '#1a1a2e',
-                                primaryBorderColor: '#2980b9',
-                                lineColor: '#2980b9',
-                                secondaryColor: '#FFF3CD',
-                                tertiaryColor: '#FEFEFE',
+                                background: '#fdf6e3',
+                                primaryColor: '#eee8d5',
+                                primaryTextColor: '#073642',
+                                primaryBorderColor: '#268bd2',
+                                lineColor: '#93a1a1',
+                                secondaryColor: '#e8e2cf',
+                                tertiaryColor: '#fdf6e3',
+                                noteBkgColor: '#fdf6e3',
+                                noteTextColor: '#073642',
+                                noteBorderColor: '#b58900',
                                 fontSize: '14px'
                             },
                             flowchart: { useMaxWidth: true, htmlLabels: true },
@@ -1329,7 +1377,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state: { useMaxWidth: true }
                         });
                     } catch (e) {
-                        console.error('[LiveUML] mermaid.initialize() failed:', e);
+                        console.error('[VibeCheck] mermaid.initialize() failed:', e);
                     }
                 }
 
@@ -1338,7 +1386,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     applyTheme();
                     applyMermaidTheme();
                     vscode.postMessage({ type: 'setTheme', theme: state.theme });
-                    if (state.diagramMode === 'mermaid' && state.mermaidCode) {
+                    if ((state.diagramMode === 'mermaid' || state.diagramMode === 'explain') && state.mermaidCode) {
                         state.renderedMermaidSvg = null;
                         renderMermaid(state.lastRequestId || 0);
                     } else {
@@ -1374,7 +1422,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         }
                         attachEvents();
                         applyDiagramSizing();
-                        if (state.diagramMode === 'mermaid') {
+                        if (state.diagramMode === 'mermaid' || state.diagramMode === 'explain') {
                             if (state.renderedMermaidSvg) {
                                 attachMermaidClassClicks();
                             } else if (state.mermaidCode && mermaidLib) {
@@ -1448,8 +1496,8 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     return \`
                         <div class="welcome fade-in">
                             <div class="welcome-icon">📊</div>
-                            <h2>Live UML</h2>
-                            <p>Whole-file diagrams, function drill-down, hover documentation, and algorithmic review — rendered locally.</p>
+                            <h2>VibeCheck</h2>
+                            <p>Color-coded explanations, whole-file overviews, function drill-down, and algorithmic review — rendered locally.</p>
                             <div class="onboarding-card">
                                 <h3>1 · Connect an AI provider</h3>
                                 <p>Needed for summaries, hover insights, and inefficiency analysis. DeepSeek is preselected; any OpenAI-compatible endpoint works. Without a key, diagrams still work.</p>
@@ -1507,11 +1555,11 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     const classTab = state.stats.language !== 'c' ? 
                         \`<button class="tab \${state.diagramType === 'class' ? 'active' : ''}" onclick="changeType('class')">Class</button>\` : '';
 
-                    const isMermaid = state.diagramMode === 'mermaid';
+                    const isMermaid = state.diagramMode === 'mermaid' || state.diagramMode === 'explain';
                     const hasDiagram = isMermaid ? (state.renderedMermaidSvg || (state.diagramSvg && state.diagramSvg.includes('empty-state'))) : state.diagramSvg;
 
                     const mermaidBlocked = isMermaid && state.mermaidCode && !mermaidLib;
-                    const effectiveError = state.error || (mermaidBlocked ? 'Mermaid library is not available on this machine (CDN blocked or no internet). Switch to PlantUML mode, or check the Live UML output panel for details.' : null);
+                    const effectiveError = state.error || (mermaidBlocked ? 'Mermaid library is not available on this machine (CDN blocked or no internet). Switch to PlantUML mode, or check the VibeCheck output panel for details.' : null);
 
                     const diagramContent = state.isLoading ? renderLoading() :
                         effectiveError ? renderError(effectiveError) :
@@ -1537,7 +1585,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     return \`
                         <div class="header">
                             <div class="header-title">
-                                Live UML
+                                VibeCheck
                                 <span class="badge">v${extensionVersion}</span>
                             </div>
                             <div class="header-stats">\${statsHtml}</div>
@@ -1548,6 +1596,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         </div>
                         \${settingsPanel}
                         <div class="mode-tabs">
+                            <button class="tab \${state.diagramMode === 'explain' ? 'active' : ''}" onclick="changeMode('explain')">Explain</button>
                             <button class="tab \${state.diagramMode === 'plantuml' ? 'active' : ''}" onclick="changeMode('plantuml')">PlantUML</button>
                             <button class="tab \${state.diagramMode === 'mermaid' ? 'active' : ''}" onclick="changeMode('mermaid')">Mermaid</button>
                         </div>
@@ -1555,10 +1604,8 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             \${select}
                         </div>
                         <div class="tabs">
-                            <button class="tab \${state.diagramType === 'file' ? 'active' : ''}" onclick="changeType('file')">File</button>
+                            <button class="tab \${state.diagramType === 'file' ? 'active' : ''}" onclick="changeType('file')">Overview</button>
                             <button class="tab \${state.diagramType === 'flowchart' ? 'active' : ''}" onclick="changeType('flowchart')">Flowchart</button>
-                            <button class="tab \${state.diagramType === 'sequence' ? 'active' : ''}" onclick="changeType('sequence')">Sequence</button>
-                            <button class="tab \${state.diagramType === 'state' ? 'active' : ''}" onclick="changeType('state')">State</button>
                             \${classTab}
                         </div>
                             \${summaryHtml}
@@ -1652,7 +1699,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 }
 
                 function renderLoading() {
-                    const isMermaid = state.diagramMode === 'mermaid';
+                    const isMermaid = state.diagramMode === 'mermaid' || state.diagramMode === 'explain';
                     const hasDiagram = isMermaid ? state.renderedMermaidSvg : state.diagramSvg;
                     if (hasDiagram) return renderDiagram();
                     return \`
@@ -1678,48 +1725,33 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 }
 
                 function renderDiagram() {
-                    const scopeWarning = state.scopeWarning ? \`
-                        <div style="padding: 6px 12px; margin-bottom: 8px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: var(--radius-sm); font-size: 11px; color: var(--warning);">
-                            ⚠ State variables inferred heuristically
-                        </div>
-                    \` : '';
-                    const externalGuessNote = state.externalGuesses && state.externalGuesses.length > 0 ? \`
-                        <div style="padding: 6px 12px; margin-bottom: 8px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: var(--radius-sm); font-size: 11px; color: #64b5f6;">
-                            ℹ Transition assumed: <code>\${state.externalGuesses.join(', ')}</code>() was called with a state-like argument but its implementation was not parsed (external). The state update was inferred heuristically.
-                        </div>
-                    \` : '';
-                    const stateVarSelector = (state.diagramType === 'state' && state.stateVars && state.stateVars.length > 1) ? \`
-                        <div class="state-var-selector fade-in">
-                            <span class="selector-label">State Variable:</span>
-                            <div class="selector-pills">
-                                \${state.stateVars.map(v => \`
-                                    <button class="pill \${v === state.activeStateVar ? 'active' : ''}" onclick="selectStateVar('\${v}')" >\${v}</button>
-                                \`).join('')}
-                            </div>
-                        </div>
-                    \` : '';
-                    const isMermaid = state.diagramMode === 'mermaid';
-                    const sourceLabel = isMermaid ? 'Mermaid' : 'PlantUML';
+                    const isMermaid = state.diagramMode === 'mermaid' || state.diagramMode === 'explain';
+                    const sourceLabel = state.diagramMode === 'explain' ? 'Explain' : (isMermaid ? 'Mermaid' : 'PlantUML');
+                    const svgButton = '<button onclick="copyDiagram()" title="Copy diagram image (SVG) to clipboard">🖼️ Copy SVG</button>';
                     const diagramBody = isMermaid
                         ? (state.renderedMermaidSvg || ((state.diagramSvg && state.diagramSvg.includes('empty-state')) ? state.diagramSvg : ''))
                         : state.diagramSvg || '';
                     const codeSection = isMermaid
                         ? (state.mermaidCode ? renderSourceCode('Mermaid', state.mermaidCode) : '')
                         : (state.plantUmlCode ? renderSourceCode('PlantUML', state.plantUmlCode) : '');
+                    const explainList = (state.diagramMode === 'explain' && state.explainComponents.length)
+                        ? \`<div class="explain-list">\${state.explainComponents.map(component => \`
+                            <div class="explain-card ec-\${component.category}" onclick="revealExplainLine(\${component.line != null ? component.line - 1 : -1})" title="\${component.line != null ? 'Jump to line ' + component.line : 'No source line mapped'}">
+                                <div class="ec-head"><span class="ec-dot"></span><span class="ec-label">\${escapeHtml(component.label)}</span><span class="ec-cat">\${escapeHtml(component.category)}</span></div>
+                                <div class="ec-body">\${escapeHtml(component.explanation)}</div>
+                                \${component.snippet ? \`<pre class="ec-snippet">\${escapeHtml(component.snippet)}</pre>\` : ''}
+                            </div>\`).join('')}</div>\` : '';
                     return \`
                         <div class="diagram-header">
                             <div class="diagram-title">
                                 <span class="func-name">\${escapeHtml(state.diagramKind === 'file' ? (state.fileName || 'File overview') : (state.currentFunction || ''))}</span>
                             </div>
                             <div class="diagram-actions">
-                                <button onclick="copySource()" title="Copy \${sourceLabel} source code to clipboard">📋 Code</button>
-                                \${isMermaid ? '' : '<button onclick="copyDiagram()" title=\"Copy diagram image (SVG) to clipboard\">🖼️ Copy SVG</button>'}
+                                <button onclick="copySource()" title="Copy source code to clipboard">📋 Code</button>
+                                \${isMermaid ? '' : svgButton}
                                 <button onclick="downloadAsPng()" title="Download diagram as PNG image">⬇ PNG</button>
                             </div>
                         </div>
-                        \${stateVarSelector}
-                        \${scopeWarning}
-                        \${externalGuessNote}
                         <div class="diagram-zoom" aria-label="Diagram zoom controls">
                             <button id="diagramZoomOut" onclick="zoomDiagram(0.8)" title="Zoom out" aria-label="Zoom out">−</button>
                             <span id="diagramZoomLabel" aria-live="polite">100%</span>
@@ -1730,6 +1762,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         <div class="diagram-view \${state.isLoading ? 'loading' : ''}" id="diagramView">
                             \${diagramBody}
                         </div>
+                        \${explainList}
                         \${codeSection}
                     \`;
                 }
@@ -1800,8 +1833,10 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     return \`
                         <div class="detail-head"><span class="detail-label">\${escapeHtml(d.label || '')}</span><button onclick="closeElementDetails()" title="Close">✕</button></div>
                         \${d.line !== null && d.line !== undefined ? '<div class="issue-meta">line ' + (d.line + 1) + '</div>' : ''}
+                        \${d.explanationText ? '<div class="detail-issue" style="border-color:var(--accent);"><div style="color:var(--text-primary);">' + escapeHtml(d.explanationText) + '</div></div>' : ''}
+                        \${d.snippet ? '<div class="detail-code">' + escapeHtml(d.snippet) + '</div>' : ''}
                         \${d.text ? '<div class="detail-code">' + escapeHtml(d.text) + '</div>' : ''}
-                        <div class="detail-docs">\${d.docsLoading ? 'Fetching hover documentation…' : escapeHtml(d.docs || 'No hover documentation available for this location.')}</div>
+                        <div class="detail-docs">\${d.docsLoading ? 'Fetching documentation…' : escapeHtml(d.docs || d.explanationText || 'No additional documentation available.')}</div>
                         \${issue ? \`<div class="detail-issue" style="border-color:\${issue.severity === 'high' ? '#ff5c5c' : issue.severity === 'medium' ? '#e2a03f' : '#d7ba7d'}">
                             <strong>\${escapeHtml(issue.title)}</strong>
                             <div style="margin-top:4px;color:var(--text-secondary);">\${escapeHtml(issue.explanation)}</div>
@@ -1850,16 +1885,6 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     state.renderedMermaidSvg = null;
                     render();
                     vscode.postMessage({ type: 'command', command: 'extension.openClass', args: name });
-                }
-
-                function selectStateVar(name) {
-                    if (state.activeStateVar === name) return;
-                    verboseLog('selectStateVar:', name);
-                    state.activeStateVar = name;
-                    state.isLoading = true;
-                    state.renderedMermaidSvg = null;
-                    render();
-                    vscode.postMessage({ type: 'command', command: 'extension.selectStateVar', args: name });
                 }
 
                 function changeType(type) {
@@ -1949,9 +1974,14 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 function refresh() { vscode.postMessage({ type: 'refresh' }); }
                 function regenerateSummary() { vscode.postMessage({ type: 'regenerateSummary' }); }
 
+                function revealExplainLine(line) {
+                    if (line >= 0) { vscode.postMessage({ type: 'revealLine', line }); }
+                    else { vscode.postMessage({ type: 'showInfo', message: 'This explanation is not mapped to a single source line.' }); }
+                }
+
                 function copySource() {
-                    const code = state.diagramMode === 'mermaid' ? state.mermaidCode : state.plantUmlCode;
-                    const label = state.diagramMode === 'mermaid' ? 'Mermaid' : 'PlantUML';
+                    const code = state.diagramMode === 'mermaid' || state.diagramMode === 'explain' ? state.mermaidCode : state.plantUmlCode;
+                    const label = state.diagramMode === 'explain' ? 'Explain' : (state.diagramMode === 'mermaid' ? 'Mermaid' : 'PlantUML');
                     if (code) {
                         navigator.clipboard.writeText(code).then(() => {
                             vscode.postMessage({ type: 'showInfo', message: label + ' source code copied to clipboard' });
@@ -2062,6 +2092,30 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     }) || null;
                 }
 
+                function explainComponentForLabel(label) {
+                    const target = normalizeLabel(label);
+                    if (!target) return null;
+                    return (state.explainComponents || []).find(component => {
+                        const value = normalizeLabel(component.label);
+                        return value === target || (value && (value.includes(target) || target.includes(value)));
+                    }) || null;
+                }
+
+                function applyExplainColors() {
+                    document.querySelectorAll('[data-explain-cat]').forEach(element => {
+                        element.removeAttribute('data-explain-cat');
+                        element.classList.remove('node-cat-compute', 'node-cat-decision', 'node-cat-loop', 'node-cat-io', 'node-cat-return');
+                    });
+                    for (const component of state.explainComponents || []) {
+                        const text = bestTextNode(component.label);
+                        if (!text) continue;
+                        const group = clickableGroup(text);
+                        if (!group) continue;
+                        group.setAttribute('data-explain-cat', component.category);
+                        group.classList.add('node-cat-' + component.category);
+                    }
+                }
+
                 function clickableGroup(textEl) {
                     let element = textEl;
                     for (let i = 0; i < 7 && element && element.tagName !== 'svg'; i++, element = element.parentElement) {
@@ -2126,8 +2180,14 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         node.addEventListener('mouseleave', hideNodeHover);
                         node.addEventListener('click', event => {
                             const label = node.textContent;
+                            if (!String(label || '').trim() || /^[●•\u2022]+$/.test(String(label).trim())) {
+                                event.stopPropagation();
+                                vscode.postMessage({ type: 'revealLine', line: 0 });
+                                return;
+                            }
                             const issue = issueForLabel(label);
-                            if (issue) { event.stopPropagation(); showElementDetails(label, issue); return; }
+                            const component = explainComponentForLabel(label);
+                            if (issue || component) { event.stopPropagation(); showElementDetails(label, issue); return; }
                             const match = findCodeEntry(label);
                             if (match?.functionName) {
                                 event.stopPropagation();
@@ -2152,14 +2212,29 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function showNodeHover(event, label) {
                     if (state.elementDetails || document.querySelector('.element-details')) return;
-                    const match = findCodeEntry(label);
-                    if (!match && !issueForLabel(label)) return;
-                    const issue = issueForLabel(label);
                     const element = document.getElementById('elementHover');
-                    hoverState = { label, line: match?.line, text: match?.text || '', requestId: null };
+                    const rawLabel = String(label || '').trim();
+                    if (!rawLabel || /^[●•\u2022]+$/.test(rawLabel)) {
+                        const fn = state.currentFunction || state.fileName || 'function';
+                        element.innerHTML = '<div class="h-title">Function entry</div>' +
+                            '<div class="h-line">' + escapeHtml(fn) + ' · start of the visualized scope</div>';
+                        element.style.display = 'block';
+                        positionHover(event);
+                        hoverState = { label: rawLabel, line: 0, text: fn, requestId: null };
+                        return;
+                    }
+                    const match = findCodeEntry(label);
+                    const issue = issueForLabel(label);
+                    const component = explainComponentForLabel(label);
+                    if (!match && !issue && !component) return;
+                    const line = match?.line ?? (component?.line ? component.line - 1 : null);
+                    hoverState = { label, line, text: match?.text || '', requestId: null };
+                    const hint = component
+                        ? '<div class="h-explain">' + escapeHtml(component.explanation) + '</div>'
+                        : (issue ? '<div class="h-issue">⚠ ' + escapeHtml(issue.title) + ' · click to explain</div>' : '<div class="h-line">click for docs and code location</div>');
                     element.innerHTML = '<div class="h-title">' + escapeHtml(label) + '</div>' +
                         (match ? '<div class="h-line">' + (match.line + 1) + ': ' + escapeHtml(match.text) + '</div>' : '') +
-                        (issue ? '<div class="h-issue">⚠ ' + escapeHtml(issue.title) + ' · click to explain</div>' : '<div class="h-line">click for docs and code location</div>') +
+                        hint +
                         '<div class="h-docs" id="hoverDocs"></div>';
                     element.style.display = 'block';
                     positionHover(event);
@@ -2184,11 +2259,15 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 function showElementDetails(label, issue) {
                     hideNodeHover();
                     const match = findCodeEntry(label);
+                    const component = explainComponentForLabel(label);
                     const requestId = 'details-' + (++docsRequestSeq);
                     const fileNode = (state.fileNodes || []).find(node => normalizeLabel(node.label) === normalizeLabel(label));
-                    state.elementDetails = { label, line: match?.line ?? (issue?.line ? issue.line - 1 : null),
+                    const line = match?.line ?? (component?.line ? component.line - 1 : (issue?.line ? issue.line - 1 : null));
+                    state.elementDetails = { label, line,
                         text: match?.text || '', docs: '', docsLoading: !!match && match.line !== null,
-                        docsRequestId: requestId, issue: issue || issueForLabel(label), functionName: fileNode?.name || match?.functionName || null };
+                        docsRequestId: requestId, issue: issue || issueForLabel(label),
+                        explanationText: component?.explanation || '', category: component?.category || '',
+                        snippet: component?.snippet || '', functionName: fileNode?.name || match?.functionName || null };
                     if (match && match.line !== null) {
                         vscode.postMessage({ type: 'symbolDocs', requestId, line: match.line, text: match.text });
                     }
@@ -2227,6 +2306,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     }
                     attachDiagramInteractions();
                     applyIssueStyles();
+                    applyExplainColors();
                 }
 
                 function attachMermaidClassClicks() {

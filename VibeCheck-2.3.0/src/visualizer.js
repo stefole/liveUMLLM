@@ -9,7 +9,7 @@ class Visualizer {
     constructor(mode) {
         this.mode = mode;
         this._providers = {};
-        const suffixes = ['flowchart', 'sequence', 'class', 'state'];
+        const suffixes = ['flowchart', 'class'];
         for (const type of suffixes) {
             this._providers[type] = registry.getDiagramProvider(type, mode);
         }
@@ -24,16 +24,8 @@ class Visualizer {
         return this._providers['flowchart'].generate(name, body, language);
     }
 
-    generateSequence(name, body, language) {
-        return this._providers['sequence'].generate(name, body, language);
-    }
-
     generateClass(targetClassName, classes, language) {
         return this._providers['class'].generate(targetClassName, classes, language);
-    }
-
-    generateState(targetName, allFunctions, language, selectedStateVar) {
-        return this._providers['state'].generate(targetName, allFunctions, language, selectedStateVar);
     }
 
     getCodeKey() {
@@ -69,7 +61,7 @@ class Visualizer {
         let javaPath = 'java';
         try {
             const vscode = require('vscode');
-            const config = vscode.workspace.getConfiguration('liveUml');
+            const config = vscode.workspace.getConfiguration('vibecheck');
             javaPath = config.get('javaPath', 'java');
         } catch (e) {
             javaPath = 'java';

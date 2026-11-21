@@ -1,13 +1,24 @@
 # Changelog
 
-All notable changes to the Live UML extension will be documented in this file.
+All notable changes to the VibeCheck extension (formerly "Live UML", then "Codeflow") will be documented in this file.
+
+## [2.3.0]
+- **Renamed to VibeCheck** — display name, view/command/config identifiers (`vibecheck.*`), output channel, and environment variables (`VIBECHECK_LLM_KEY` / `VIBECHECK_LLM_BASE_URL`) all renamed from the former `liveUml`/Codeflow naming.
+- **Refocused on explanation over UML notation**.
+- **Trim**: removed the Sequence and State Machine diagram types. The toolbar now offers Overview, Flowchart, and Class diagram only.
+- **Explain is the main view** (the default renderer). It shows an LLM-generated, color-coded flow diagram with text in nodes and edge labels, plus a list of explanation cards.
+- **Concrete code snippets**: Explain cards and the details panel now show the actual source lines a node maps to, and document what each step does.
+- **Deterministic explanation fallback**: when no model is configured or hover docs are missing, every node still gets an explanation derived from its source — hover and click never go silent.
+- **File-wide overview** view with per-function call edges.
+- **Theme-aware colors**: the UI, Mermaid, and PlantUML now follow the VS Code theme automatically — Tokyo Night-inspired palette in dark mode, Solarized in light mode. Light mode no longer renders a dark diagram.
+- **UI polish**: refreshed header, tabs, explanation cards, and hover/details panels with the new palette.
 
 ## [2.1.0]
 - Add onboarding when no file is open: provider connection form (provider, base URL, model, endpoint-scoped key, timeout, test connection/load models), plus a one-click demo Python file that exercises the full flow.
 - Default renderer is now PlantUML (Java required); Mermaid remains available and is remembered per user once selected.
-- Add a whole-file **File** view: every function in the active file, with call edges when functions call each other. Clicking an uncolored function node drills into its flowchart; the function picker also drills down.
-- Hover any diagram node to see its source line, that line's code, and hover documentation from the active language extension (Pylance for Python). Hover docs are fetched on demand and cached per line.
-- Add algorithmic review: the configured model analyses the diagram plus source, colours nodes by severity, and lists concrete issues. Clicking a coloured node or issue row shows the explanation, suggestion, hover docs, and Go to line.
+- Add a whole-file **File** view: every function in the active file, with call edges when functions call each other.
+- Hover any diagram node to see its source line, that line's code, and hover documentation.
+- Add algorithmic review: the configured model analyses the diagram plus source, colours nodes by severity, and lists concrete issues.
 - Add `liveUml.llm.analyze` (default true) and a sidebar toggle. Analysis runs independently of diagram rendering and never blocks it.
 - Strip HTML from hover docs, retry reasoning-model JSON once, collapse diagram source by default, and show the file view vertically to fit the sidebar.
 

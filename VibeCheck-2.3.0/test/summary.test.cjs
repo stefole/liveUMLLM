@@ -14,16 +14,16 @@ function setup(config={},hover=async()=>[]) {
  const source=fs.readFileSync(path.join(base,'src/extension.js'),'utf8');
  const mod={exports:{}}; const req=createRequire(path.join(base,'src/extension.js'));
  const context={module:mod,exports:mod.exports,require:n=>n==='vscode'?vscode:req(n),__dirname:path.join(base,'src'),process,console,setTimeout,clearTimeout,AbortController};
- vm.runInNewContext(source+'\ncurrentLanguage="python"; module.exports._test={LiveUmlSidebar,PlantUmlServerManager};',context);
- const sidebar=new mod.exports._test.LiveUmlSidebar({}); const messages=[];
+ vm.runInNewContext(source+'\ncurrentLanguage="python"; module.exports._test={VibeCheckSidebar,PlantUmlServerManager};',context);
+ const sidebar=new mod.exports._test.VibeCheckSidebar({}); const messages=[];
  sidebar.currentDiagramMode='mermaid';
  sidebar.post=m=>messages.push(m);
  sidebar._currentRequestId=1; sidebar.currentFunctionName='add';
  return {sidebar,messages,document,settings,ServerManager:mod.exports._test.PlantUmlServerManager};
 }
-test('new workspaces default to the whole-file view in PlantUML',()=>{
+test('new workspaces default to the whole-file (overview) view in Explain mode',()=>{
  const Sidebar=setup().sidebar.constructor;const sidebar=new Sidebar({globalState:{get:(key,fallback)=>fallback}});
- assert.equal(sidebar.currentDiagramType,'file');assert.equal(sidebar.currentDiagramMode,'plantuml');
+ assert.equal(sidebar.currentDiagramType,'file');assert.equal(sidebar.currentDiagramMode,'explain');
 });
 test('switching providers never reuses another endpoint credential',async()=>{
  const {sidebar,settings}=setup();const keys=new Map();sidebar.context.secrets={store:async(k,v)=>keys.set(k,v),get:async k=>keys.get(k)};

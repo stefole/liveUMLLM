@@ -23,7 +23,7 @@ function normalizeBaseUrl(value) {
 }
 
 function secretName(baseUrl) {
-    return 'liveUml.llm.apiKey:' + crypto.createHash('sha256').update(normalizeBaseUrl(baseUrl)).digest('hex');
+    return 'vibecheck.llm.apiKey:' + crypto.createHash('sha256').update(normalizeBaseUrl(baseUrl)).digest('hex');
 }
 
 function isLocalEndpoint(baseUrl) {

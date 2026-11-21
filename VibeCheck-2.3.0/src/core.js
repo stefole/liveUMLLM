@@ -211,7 +211,7 @@ async function generatePlantUMLSVG(plantUmlCode, context, serverUrl) {
     let javaPath = 'java';
     try {
         const vscode = require('vscode');
-        const config = vscode.workspace.getConfiguration('liveUml');
+        const config = vscode.workspace.getConfiguration('vibecheck');
         javaPath = config.get('javaPath', 'java');
     } catch (e) {
         javaPath = 'java';

@@ -1,8 +1,8 @@
 {
-  "name": "live-uml",
-  "displayName": "Live UML",
-  "description": "Live PlantUML flowchart, sequence diagram, state machine and class diagram for C, C++, Java, JavaScript, TypeScript, and Python code",
-  "version": "2.1.0",
+  "name": "vibecheck",
+  "displayName": "VibeCheck",
+  "description": "Visual, AI-explained code navigation for Python, JavaScript, TypeScript, C, C++ and Java — a color-coded Explain view, function flowcharts, and class diagrams.",
+  "version": "2.3.0",
   "publisher": "bitlab",
   "repository": {
     "type": "git",
@@ -15,16 +15,15 @@
     "vscode": "^1.60.0"
   },
   "keywords": [
-    "mermaid",
-    "PlantUML",
-    "UML",
+    "code explanation",
     "flowchart",
-    "sequence diagram",
     "class diagram",
-    "state machine diagram",
-    "instant diagram",
-    "live diagram",
+    "PlantUML",
+    "Mermaid",
+    "AI",
+    "LLM",
     "visualization",
+    "code navigation",
     "C",
     "C++",
     "Java",
@@ -32,8 +31,7 @@
     "JavaScript",
     "TypeScript",
     "code visualization",
-    "diagram generator",
-    "real-time diagram"
+    "diagram generator"
   ],
   "categories": [
     "Visualization",
@@ -52,106 +50,106 @@
   "main": "./src/extension.js",
   "contributes": {
     "views": {
-      "live-uml": [
+      "vibecheck": [
         {
           "type": "webview",
-          "id": "liveUmlSidebar-webview",
-          "name": "Live UML"
+          "id": "vibecheck-webview",
+          "name": "VibeCheck"
         }
       ]
     },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "live-uml",
-          "title": "Live UML",
-          "icon": "media/liveuml.svg"
+          "id": "vibecheck",
+          "title": "VibeCheck",
+          "icon": "media/vibecheck.svg"
         }
       ]
     },
     "commands": [
       {
-        "command": "liveUml.regenerateSummary",
-        "title": "Regenerate AI Summary",
-        "category": "Live UML"
+        "command": "vibecheck.regenerateSummary",
+        "title": "Regenerate AI Explanation",
+        "category": "VibeCheck"
       },
       {
-        "command": "liveUml.refresh",
+        "command": "vibecheck.refresh",
         "title": "Refresh Diagram",
-        "category": "Live UML"
+        "category": "VibeCheck"
       },
       {
-        "command": "liveUml.show",
+        "command": "vibecheck.show",
         "title": "Show / Toggle Sidebar",
-        "category": "Live UML"
+        "category": "VibeCheck"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "liveUml.refresh",
-          "when": "view == liveUmlSidebar-webview",
+          "command": "vibecheck.refresh",
+          "when": "view == vibecheck-webview",
           "group": "navigation"
         }
       ]
     },
     "configuration": {
-      "title": "Live UML",
+      "title": "VibeCheck",
       "properties": {
-        "liveUml.javaPath": {
+        "vibecheck.javaPath": {
           "type": "string",
           "default": "java",
           "description": "Path to the Java executable used to run PlantUML. Set this if Java is not in your system PATH, or to use a specific Java installation."
         },
-        "liveUml.classExcludePatterns": {
+        "vibecheck.classExcludePatterns": {
           "type": "string",
           "default": "node_modules, build, bin, dist, target",
           "description": "Comma-separated directory names to exclude from class diagram scanning."
         },
-        "liveUml.debug": {
+        "vibecheck.debug": {
           "type": "boolean",
           "default": false,
-          "description": "Enable verbose debug logging to the 'Live UML' output channel. Useful for diagnosing blank sidebar or diagram generation issues."
+          "description": "Enable verbose debug logging to the 'VibeCheck' output channel. Useful for diagnosing blank sidebar or diagram generation issues."
         },
-        "liveUml.llm.enabled": {
+        "vibecheck.llm.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Show an LLM-written summary of the selected function above the diagram."
         },
-        "liveUml.llm.provider": {
+        "vibecheck.llm.provider": {
           "type": "string",
           "enum": ["deepseek", "openai", "openrouter", "ollama", "lmstudio", "custom"],
           "default": "deepseek",
-          "description": "Provider preset selected in the Live UML sidebar. Configure its base URL, model ID, timeout, and endpoint-specific key using the sidebar gear panel. All presets use OpenAI-compatible Chat Completions."
+          "description": "Provider preset selected in the VibeCheck sidebar. Configure its base URL, model ID, timeout, and endpoint-specific key using the sidebar gear panel. All presets use OpenAI-compatible Chat Completions."
         },
-        "liveUml.llm.updateMode": {
+        "vibecheck.llm.updateMode": {
           "type": "string",
           "enum": ["automatic", "manual"],
           "default": "automatic",
           "enumDescriptions": ["Update after function edits (1.2-second debounce); reuse unchanged summaries.", "Only request a summary when Generate/Regenerate summary is pressed."],
           "description": "When to generate AI summaries. The Regenerate summary button always requests a fresh summary."
         },
-        "liveUml.llm.analyze": {
+        "vibecheck.llm.analyze": {
           "type": "boolean",
           "default": true,
           "description": "Ask the configured model to flag algorithmic inefficiencies and colour the corresponding diagram nodes. Sends the current function/file source and diagram source to that endpoint."
         },
-        "liveUml.llm.baseUrl": {
+        "vibecheck.llm.baseUrl": {
           "type": "string",
           "default": "https://api.deepseek.com/v1",
           "description": "OpenAI-compatible base URL. Use http://127.0.0.1:1234/v1 for LM Studio, http://127.0.0.1:11434/v1 for Ollama."
         },
-        "liveUml.llm.model": {
+        "vibecheck.llm.model": {
           "type": "string",
           "default": "deepseek-flash",
           "description": "Model name sent to the endpoint."
         },
-        "liveUml.llm.apiKey": {
+        "vibecheck.llm.apiKey": {
           "type": "string",
           "default": "",
-          "description": "Legacy settings-based API key. Prefer entering the key in the Live UML sidebar gear panel, which uses VS Code secret storage. Environment fallback: LIVEUML_LLM_KEY or DEEPSEEK_API_KEY."
+          "description": "Legacy settings-based API key. Prefer entering the key in the VibeCheck sidebar gear panel, which uses VS Code secret storage. Environment fallback: VIBECHECK_LLM_KEY or DEEPSEEK_API_KEY."
         },
-        "liveUml.llm.timeoutMs": {
+        "vibecheck.llm.timeoutMs": {
           "type": "number",
           "default": 30000,
           "minimum": 1000,
