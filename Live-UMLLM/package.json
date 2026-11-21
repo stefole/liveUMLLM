@@ -1,0 +1,166 @@
+{
+  "name": "live-uml",
+  "displayName": "Live UML",
+  "description": "Live PlantUML flowchart, sequence diagram, state machine and class diagram for C, C++, Java, JavaScript, TypeScript, and Python code",
+  "version": "2.0.10",
+  "publisher": "bitlab",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codenaveed/liveuml.git"
+  },
+  "readme": "readme.md",
+  "changelog": "changelog.md",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "keywords": [
+    "mermaid",
+    "PlantUML",
+    "UML",
+    "flowchart",
+    "sequence diagram",
+    "class diagram",
+    "state machine diagram",
+    "instant diagram",
+    "live diagram",
+    "visualization",
+    "C",
+    "C++",
+    "Java",
+    "Python",
+    "JavaScript",
+    "TypeScript",
+    "code visualization",
+    "diagram generator",
+    "real-time diagram"
+  ],
+  "categories": [
+    "Visualization",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onLanguage:java",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:python"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "views": {
+      "live-uml": [
+        {
+          "type": "webview",
+          "id": "liveUmlSidebar-webview",
+          "name": "Live UML"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "live-uml",
+          "title": "Live UML",
+          "icon": "media/liveuml.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "liveUml.regenerateSummary",
+        "title": "Regenerate AI Summary",
+        "category": "Live UML"
+      },
+      {
+        "command": "liveUml.refresh",
+        "title": "Refresh Diagram",
+        "category": "Live UML"
+      },
+      {
+        "command": "liveUml.show",
+        "title": "Show / Toggle Sidebar",
+        "category": "Live UML"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "liveUml.refresh",
+          "when": "view == liveUmlSidebar-webview",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Live UML",
+      "properties": {
+        "liveUml.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Path to the Java executable used to run PlantUML. Set this if Java is not in your system PATH, or to use a specific Java installation."
+        },
+        "liveUml.classExcludePatterns": {
+          "type": "string",
+          "default": "node_modules, build, bin, dist, target",
+          "description": "Comma-separated directory names to exclude from class diagram scanning."
+        },
+        "liveUml.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose debug logging to the 'Live UML' output channel. Useful for diagnosing blank sidebar or diagram generation issues."
+        },
+        "liveUml.llm.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show an LLM-written summary of the selected function above the diagram."
+        },
+        "liveUml.llm.updateMode": {
+          "type": "string",
+          "enum": ["automatic", "manual"],
+          "default": "automatic",
+          "enumDescriptions": ["Update after function edits (1.2-second debounce); reuse unchanged summaries.", "Only request a summary when Generate/Regenerate summary is pressed."],
+          "description": "When to generate AI summaries. The Regenerate summary button always requests a fresh summary."
+        },
+        "liveUml.llm.baseUrl": {
+          "type": "string",
+          "default": "https://api.deepseek.com/v1",
+          "description": "OpenAI-compatible base URL. Use http://127.0.0.1:1234/v1 for LM Studio, http://127.0.0.1:11434/v1 for Ollama."
+        },
+        "liveUml.llm.model": {
+          "type": "string",
+          "default": "deepseek-flash",
+          "description": "Model name sent to the endpoint."
+        },
+        "liveUml.llm.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Legacy settings-based API key. Prefer entering the key in the Live UML sidebar gear panel, which uses VS Code secret storage. Environment fallback: LIVEUML_LLM_KEY or DEEPSEEK_API_KEY."
+        },
+        "liveUml.llm.timeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "description": "Request timeout in milliseconds. Raise it for slow local models."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "vscode:prepublish": "echo 'Ready'",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "tree-sitter-c": "^0.24.1",
+    "tree-sitter-cpp": "^0.23.4",
+    "tree-sitter-java": "^0.23.5",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "web-tree-sitter": "^0.26.9"
+  }
+}
