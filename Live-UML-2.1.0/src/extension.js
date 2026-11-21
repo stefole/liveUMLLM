@@ -9,6 +9,10 @@ const tsProvider = require('./providers/utils/TreeSitterProvider');
 const Visualizer = require('./visualizer');
 const logger = require('./logger');
 const summaries = require('./summaries');
+const llmConfig = require('./llmConfig');
+const analysis = require('./analysis');
+const { buildFileOverview } = require('./fileOverview');
+const { buildCodeMap } = require('./codeMap');
 
 const palette = require('./palette');
 
@@ -16,6 +20,40 @@ let sidebarProvider = null;
 let currentLanguage = '';
 let plantUmlServer = null;
 let _typingInProgress = false;
+
+const DEMO_SOURCE = `import math
+
+
+def build_window(size):
+    """A Hann-like window of the requested size."""
+    return [0.5 - 0.5 * math.cos(2 * math.pi * i / (size - 1)) for i in range(size)]
+
+
+def transform(values):
+    """A simple stand-in for a transform pass."""
+    return [value * value for value in values]
+
+
+def spectral_power(samples, window_size):
+    """Demo: rebuilt window and repeated transform inside a hot loop."""
+    power = 0.0
+    for i in range(len(samples)):
+        window = build_window(window_size)
+        transformed = transform(samples[i:i + window_size])
+        power += sum(transformed) * math.sqrt(window_size)
+    return power
+
+
+def moving_average(samples, window_size):
+    """Average every sample over a sliding window."""
+    output = []
+    for i in range(len(samples)):
+        total = 0.0
+        for j in range(window_size):
+            total += samples[i + j]
+        output.append(total / window_size)
+    return output
+`;
 
 class PlantUmlServerManager {
     constructor() {
@@ -132,7 +170,7 @@ async function activate(context) {
     }));
     context.subscriptions.push(vscode.commands.registerCommand('liveUml.regenerateSummary', () => sidebarProvider?.regenerateSummary()));
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration('liveUml.llm') && sidebarProvider) {
+        if (event.affectsConfiguration('liveUml.llm') && sidebarProvider && !sidebarProvider._savingSettings) {
             sidebarProvider._summaryAbort?.abort();
             summaries.clearCache();
             sidebarProvider._lastFunctionHash = null;
@@ -287,6 +325,14 @@ async function activate(context) {
         if (!sidebarProvider || !sidebarProvider.isViewVisible()) return;
         sidebarProvider.refresh();
     }));
+    context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => {
+        if (!sidebarProvider || !sidebarProvider.isViewVisible()) return;
+        if (!vscode.window.activeTextEditor) sidebarProvider.refresh();
+    }));
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(() => {
+        if (!sidebarProvider || !sidebarProvider.isViewVisible()) return;
+        if (!vscode.window.activeTextEditor) sidebarProvider.refresh();
+    }));
 
     let selectionDebounceTimer = null;
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => {
@@ -366,12 +412,13 @@ class LiveUmlSidebar {
 
     constructor(context) {
         this.context = context;
+        this._storedApiKeys = new Map();
         this.view = null;
         this.currentFunctionName = null;
         this.currentClassName = null;
-        this.currentDiagramType = 'flowchart';
-        const savedMode = context.globalState?.get('diagramMode', 'mermaid');
-        this.currentDiagramMode = savedMode === 'plantuml' ? 'plantuml' : 'mermaid';
+        this.currentDiagramType = 'file';
+        const savedMode = context.globalState?.get('diagramMode', 'plantuml');
+        this.currentDiagramMode = savedMode === 'mermaid' ? 'mermaid' : 'plantuml';
         this.diagramTheme = 'dark';          // 'dark' | 'light'
         this._viewVisible = false;
         this._generationInProgress = false;
@@ -389,6 +436,22 @@ class LiveUmlSidebar {
 
     isViewVisible() { return this._viewVisible; }
 
+    _publicSettings() {
+        const config = this._summaryConfig();
+        return {
+            javaPath: vscode.workspace.getConfiguration('liveUml').get('javaPath', 'java'),
+            classExcludePatterns: vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target'),
+            llmEnabled: config.enabled,
+            llmUpdateMode: config.updateMode,
+            llmProvider: config.provider,
+            llmBaseUrl: config.baseUrl,
+            llmModel: config.model,
+            llmTimeoutMs: config.timeoutMs,
+            llmAnalyze: vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true),
+            hasApiKey: !!config.apiKey
+        };
+    }
+
     async setDiagramMode(mode) {
         if (!['plantuml', 'mermaid'].includes(mode)) return false;
         this.currentDiagramMode = mode;
@@ -397,32 +460,131 @@ class LiveUmlSidebar {
         return true;
     }
 
-    async loadApiKey() {
-        this._storedApiKey = await this.context.secrets.get('liveUml.llm.apiKey') || '';
+    async loadApiKey(baseUrl) {
+        const config = vscode.workspace.getConfiguration('liveUml');
+        baseUrl = baseUrl || config.get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
+        const name = llmConfig.secretName(baseUrl);
+        let key = await this.context.secrets.get(name);
+        // Only migrate the old unscoped secret into its original DeepSeek endpoint.
+        if (!key && llmConfig.isDeepSeekEndpoint(baseUrl)) {
+            key = await this.context.secrets.get('liveUml.llm.apiKey');
+            if (key) await this.context.secrets.store(name, key);
+        }
+        this._storedApiKeys.set(name, key || '');
+        return key || '';
     }
 
-    async saveApiKey(value) {
+    async saveApiKey(value, baseUrl) {
         if (typeof value !== 'string' || !value.trim()) return;
+        baseUrl = baseUrl || vscode.workspace.getConfiguration('liveUml').get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
         const key = value.trim();
-        await this.context.secrets.store('liveUml.llm.apiKey', key);
-        this._storedApiKey = key;
+        const name = llmConfig.secretName(baseUrl);
+        await this.context.secrets.store(name, key);
+        this._storedApiKeys.set(name, key);
         this._summaryAbort?.abort();
         summaries.clearCache();
         this._lastFunctionHash = null;
     }
 
+    _apiKeyFor(baseUrl) {
+        try {
+            const saved = this._storedApiKeys.get(llmConfig.secretName(baseUrl));
+            if (saved) return saved;
+            if (llmConfig.isDeepSeekEndpoint(baseUrl)) {
+                return vscode.workspace.getConfiguration('liveUml').get('llm.apiKey', '') ||
+                    process.env.LIVEUML_LLM_KEY || process.env.DEEPSEEK_API_KEY || '';
+            }
+            if (process.env.LIVEUML_LLM_BASE_URL &&
+                llmConfig.normalizeBaseUrl(process.env.LIVEUML_LLM_BASE_URL) === llmConfig.normalizeBaseUrl(baseUrl)) {
+                return process.env.LIVEUML_LLM_KEY || '';
+            }
+        } catch { /* invalid external settings: validation is surfaced when saved/tested */ }
+        return '';
+    }
+
+    async saveConnectionSettings(settings) {
+        const connection = llmConfig.validateConnection(settings, settings.llmEnabled !== false);
+        this._savingSettings = true;
+        this._summaryAbort?.abort();
+        try {
+            if (settings.llmApiKey?.trim()) await this.saveApiKey(settings.llmApiKey, connection.baseUrl);
+            else await this.loadApiKey(connection.baseUrl);
+            const config = vscode.workspace.getConfiguration('liveUml');
+            const fields = { 'llm.provider': connection.provider, 'llm.baseUrl': connection.baseUrl,
+                'llm.model': connection.model, 'llm.timeoutMs': connection.timeoutMs };
+            if (typeof settings.llmEnabled === 'boolean') fields['llm.enabled'] = settings.llmEnabled;
+            if (['automatic', 'manual'].includes(settings.llmUpdateMode)) fields['llm.updateMode'] = settings.llmUpdateMode;
+            if (typeof settings.llmAnalyze === 'boolean') fields['llm.analyze'] = settings.llmAnalyze;
+            for (const [name, value] of Object.entries(fields)) await config.update(name, value, vscode.ConfigurationTarget.Global);
+            summaries.clearCache();
+            this._lastFunctionHash = null;
+        } finally { this._savingSettings = false; }
+    }
+
     _summaryConfig() {
         const c = vscode.workspace.getConfiguration('liveUml');
+        const baseUrl = c.get('llm.baseUrl', llmConfig.PROVIDERS.deepseek.baseUrl);
         return {
             enabled: c.get('llm.enabled', true),
             updateMode: c.get('llm.updateMode', 'automatic'),
-            baseUrl: c.get('llm.baseUrl', 'https://api.deepseek.com/v1'),
+            provider: c.get('llm.provider', '') === 'custom' ? 'custom' : llmConfig.inferProvider(baseUrl),
+            baseUrl,
             model: c.get('llm.model', 'deepseek-flash'),
-            apiKey: this._storedApiKey || c.get('llm.apiKey', '') ||
-                    process.env.LIVEUML_LLM_KEY ||
-                    process.env.DEEPSEEK_API_KEY || '',
+            apiKey: this._apiKeyFor(baseUrl),
             timeoutMs: c.get('llm.timeoutMs', 30000)
         };
+    }
+
+    async _docsForLine(document, line, text) {
+        const sourceLine = line >= 0 && line < document.lineCount ? document.lineAt(line).text : '';
+        if (!sourceLine) return { docs: '', line };
+        const skip = new Set(['if', 'for', 'while', 'return', 'def', 'class', 'print', 'len', 'range',
+            'self', 'True', 'False', 'None', 'in', 'and', 'or', 'not', 'else', 'elif', 'with', 'as']);
+        const names = [...new Set([...String(text || sourceLine).matchAll(/[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/g)]
+            .map(match => match[0]))].filter(name => !skip.has(name.split('.').pop())).slice(0, 3);
+        const docs = [];
+        for (const name of names) {
+            const base = name.split('.').pop();
+            let index = sourceLine.indexOf(base);
+            if (index < 0) index = sourceLine.indexOf(name);
+            if (index < 0) continue;
+            try {
+                const hovers = await Promise.race([
+                    vscode.commands.executeCommand('vscode.executeHoverProvider', document.uri,
+                        new vscode.Position(line, index)),
+                    new Promise(resolve => setTimeout(() => resolve(null), 900))
+                ]);
+                const value = (hovers || []).flatMap(hover => hover.contents || [])
+                    .map(content => typeof content === 'string' ? content : content.value || '')
+                    .join('\n').replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, '')
+                    .replace(/```[a-z]*\n?/gi, '').replace(/\n{2,}/g, '\n').trim();
+                if (value) docs.push(`${name}: ${value.slice(0, 600)}`);
+            } catch { /* hover provider unavailable */ }
+        }
+        return { docs: docs.join('\n'), line };
+    }
+
+    async _runAnalysis({ code, diagramCode, mode, labels, language, name, requestId, scope }) {
+        const cfg = this._summaryConfig();
+        const enabled = vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true);
+        if (!enabled) { this.post({ type: 'analysis', requestId, name, scope, skipped: true }); return; }
+        if (!cfg.apiKey && !llmConfig.isLocalEndpoint(cfg.baseUrl)) { this.post({ type: 'analysis', requestId, name, scope, skipped: true }); return; }
+        this._analysisAbort?.abort();
+        const controller = new AbortController();
+        this._analysisAbort = controller;
+        this.post({ type: 'analysisLoading', requestId, name, scope });
+        try {
+            const result = await analysis.analyze({ code, diagramCode, mode, labels, signal: controller.signal,
+                config: { ...cfg, language } });
+            if (this._currentRequestId !== requestId || controller.signal.aborted) return;
+            if (result) this.post({ type: 'analysis', requestId, name, scope, ...result });
+            else this.post({ type: 'analysis', requestId, name, scope, skipped: true });
+        } catch (error) {
+            if (this._currentRequestId !== requestId || controller.signal.aborted) return;
+            const message = String(error.message).split(cfg.apiKey || '\0').join('[redacted]').replace(/sk-[A-Za-z0-9_-]+/g, '[redacted]');
+            logger.warn(`analysis(): ${message}`);
+            this.post({ type: 'analysisError', requestId, name, scope, message });
+        }
     }
 
     async _runSummary(req, document, requestId, force = false) {
@@ -431,7 +593,7 @@ class LiveUmlSidebar {
             message, name: req.name, requestId, enabled: cfg.enabled, updateMode: cfg.updateMode });
         if (!cfg.enabled) { status('disabled'); return; }
         if (!force && cfg.updateMode === 'manual') { status('idle'); return; }
-        if (!cfg.apiKey) { status('error', 'Open the sidebar gear settings and enter your AI API key.'); return; }
+        if (!cfg.apiKey && !llmConfig.isLocalEndpoint(cfg.baseUrl)) { status('error', 'Open the sidebar gear settings and enter an API key for this provider / endpoint.'); return; }
         this._summaryAbort?.abort();
         const controller = new AbortController();
         this._summaryAbort = controller;
@@ -450,7 +612,7 @@ class LiveUmlSidebar {
             if (result) this.post({ type: 'summary', name: req.name, requestId, ...result });
             else status('error', 'The model returned no usable summary.');
         } catch (error) {
-            if (current()) status('error', String(error.message).replace(/sk-[A-Za-z0-9_-]+/g, '[redacted]'));
+            if (current()) status('error', String(error.message).split(cfg.apiKey || '\0').join('[redacted]').replace(/sk-[A-Za-z0-9_-]+/g, '[redacted]'));
         } finally {
             clearTimeout(hoverTimer);
         }
@@ -537,11 +699,46 @@ class LiveUmlSidebar {
                     await this.refresh();
                     break;
                 case 'refresh': this.refresh(); break;
+                case 'openDemo': {
+                    const document = await vscode.workspace.openTextDocument({ language: 'python', content: DEMO_SOURCE });
+                    await vscode.window.showTextDocument(document);
+                    this.currentDiagramType = 'file';
+                    this.currentFunctionName = null;
+                    this.post({ type: 'demoOpened' });
+                    setTimeout(() => this.refresh(), 150);
+                    break;
+                }
+                case 'drillFunction': {
+                    if (!msg.functionName) break;
+                    this.currentDiagramType = 'flowchart';
+                    this.currentFunctionName = msg.functionName;
+                    await vscode.commands.executeCommand('extension.openFunction', msg.functionName);
+                    break;
+                }
+                case 'symbolDocs': {
+                    const editor = vscode.window.activeTextEditor;
+                    if (!editor) { this.post({ type: 'symbolDocsResult', requestId: msg.requestId, docs: '' }); break; }
+                    const result = await this._docsForLine(editor.document, Number(msg.line), msg.text);
+                    this.post({ type: 'symbolDocsResult', requestId: msg.requestId, ...result });
+                    break;
+                }
+                case 'revealLine': {
+                    const editor = vscode.window.activeTextEditor;
+                    const line = Number(msg.line);
+                    if (!editor || !Number.isInteger(line) || line < 0 || line >= editor.document.lineCount) break;
+                    editor.selection = new vscode.Selection(line, 0, line, 0);
+                    editor.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter);
+                    break;
+                }
                 case 'regenerateSummary': await this.regenerateSummary(); break;
                 case 'changeDiagramType':
                     logger.log(`changeDiagramType: ${msg.diagramType}`);
                     this.currentDiagramType = msg.diagramType;
-                    if (this.currentFunctionName) await this.generate(this.currentFunctionName, msg.diagramType);
+                    if (msg.diagramType === 'file') {
+                        await this.refresh();
+                    } else if (this.currentFunctionName) {
+                        await this.generate(this.currentFunctionName, msg.diagramType);
+                    }
                     break;
                 case 'changeDiagramMode':
                     logger.log(`changeDiagramMode: ${msg.diagramMode}`);
@@ -599,26 +796,35 @@ class LiveUmlSidebar {
                 case 'openSettings':
                     this.view.webview.postMessage({
                         type: 'showSettings',
-                        settings: {
-                            javaPath: vscode.workspace.getConfiguration('liveUml').get('javaPath', 'java'),
-                            llmEnabled: this._summaryConfig().enabled,
-                            llmUpdateMode: this._summaryConfig().updateMode,
-                            hasApiKey: !!this._summaryConfig().apiKey,
-                            classExcludePatterns: vscode.workspace.getConfiguration('liveUml').get('classExcludePatterns', 'node_modules, build, bin, dist, target')
-                        }
+                        settings: this._publicSettings()
                     });
                     break;
+                case 'connectionKeyStatus': {
+                    let hasApiKey = false;
+                    try { await this.loadApiKey(msg.baseUrl); hasApiKey = !!this._apiKeyFor(msg.baseUrl); } catch { /* invalid input or unavailable secret storage */ }
+                    this.post({ type: 'connectionKeyStatus', baseUrl: msg.baseUrl, hasApiKey });
+                    break;
+                }
+                case 'testConnection': {
+                    try {
+                        const connection = llmConfig.validateConnection(msg.settings, false);
+                        const typedKey = String(msg.settings.llmApiKey || '').trim();
+                        if (!typedKey) await this.loadApiKey(connection.baseUrl);
+                        const apiKey = typedKey || this._apiKeyFor(connection.baseUrl);
+                        const result = await llmConfig.testConnection({ ...connection, apiKey, timeoutMs: Math.min(connection.timeoutMs, 15000) });
+                        this.post({ type: 'connectionTestResult', requestId: msg.requestId, success: true, ...result });
+                    } catch (error) {
+                        this.post({ type: 'connectionTestResult', requestId: msg.requestId, success: false,
+                            message: String(error.message).replace(/sk-[A-Za-z0-9_-]+/g, '[redacted]') });
+                    }
+                    break;
+                }
                 case 'saveSettings':
-                    try { await this.saveApiKey(msg.settings.llmApiKey); }
-                    catch {
-                        this.post({ type: 'settingsError', message: 'Could not save the API key to VS Code secret storage. Please retry.' });
+                    try { await this.saveConnectionSettings(msg.settings); }
+                    catch (error) {
+                        const message = String(error.message).split(msg.settings.llmApiKey || '\0').join('[redacted]');
+                        this.post({ type: 'settingsError', message: 'Could not save connection settings: ' + message });
                         break;
-                    }
-                    if (typeof msg.settings.llmEnabled === 'boolean') {
-                        await vscode.workspace.getConfiguration('liveUml').update('llm.enabled', msg.settings.llmEnabled, vscode.ConfigurationTarget.Global);
-                    }
-                    if (['automatic', 'manual'].includes(msg.settings.llmUpdateMode)) {
-                        await vscode.workspace.getConfiguration('liveUml').update('llm.updateMode', msg.settings.llmUpdateMode, vscode.ConfigurationTarget.Global);
                     }
                     if (msg.settings.javaPath !== undefined) {
                         await vscode.workspace.getConfiguration('liveUml').update('javaPath', msg.settings.javaPath, vscode.ConfigurationTarget.Global);
@@ -646,7 +852,7 @@ class LiveUmlSidebar {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             logger.log('refresh(): no active editor');
-            this.post({ type: 'noEditor' });
+            this.post({ type: 'noEditor', settings: this._publicSettings() });
             return;
         }
 
@@ -710,14 +916,20 @@ class LiveUmlSidebar {
             },
             diagramType: this.currentDiagramType,
             diagramMode: this.currentDiagramMode,
+            fileName: path.basename(editor.document.uri.fsPath || 'untitled'),
             theme: this.diagramTheme,
             verbose: logger.VERBOSE,
             summaryEnabled: this._summaryConfig().enabled,
-            summaryUpdateMode: this._summaryConfig().updateMode
+            summaryUpdateMode: this._summaryConfig().updateMode,
+            analysisEnabled: this._summaryConfig().enabled &&
+                vscode.workspace.getConfiguration('liveUml').get('llm.analyze', true)
         });
 
         logger.debug(`refresh(): will generate for target=${newFunctionName || newClassName}, type=${this.currentDiagramType}`);
-        if (this.currentDiagramType === 'class') {
+        if (this.currentDiagramType === 'file') {
+            this.currentFunctionName = null;
+            await this.generate(path.basename(editor.document.uri.fsPath || 'untitled'), 'file');
+        } else if (this.currentDiagramType === 'class') {
             if (newClassName) {
                 this.currentClassName = newClassName;
                 await this.generate(newClassName, 'class');
@@ -749,7 +961,7 @@ class LiveUmlSidebar {
             // Output/log channels are documents too — never diagram their text.
             if (!editor || !['file', 'untitled', 'vscode-notebook-cell'].includes(editor.document.uri.scheme)) {
                 logger.log(`generate(): no file editor (${editor?.document.uri.scheme || 'none'}), aborting`);
-                this.post({ type: 'noEditor' });
+                this.post({ type: 'noEditor', settings: this._publicSettings() });
                 return;
             }
 
@@ -760,9 +972,31 @@ class LiveUmlSidebar {
             let stateVars = [];
             let activeStateVar = null;
             let serverUrl = null;
+            let fileNodes = [];
+            let codeMapEntries = [];
+            let analysisCode = '';
+            let analysisLabels = [];
             pendingSummary = null;
 
-            if (type === 'class') {
+            if (type === 'file') {
+                const functions = parseFunctions(editor.document);
+                const overview = buildFileOverview(functions, { mode: this.currentDiagramMode,
+                    fileName: path.basename(editor.document.uri.fsPath || 'untitled') });
+                diagramCode = overview.code;
+                fileNodes = overview.nodes;
+                codeMapEntries = functions.map(func => ({ labels: [func.name], line: func.startLine,
+                    text: (func.body || '').split('\n')[0].trim() }));
+                analysisCode = numberedLines(editor.document, 0, Math.min(editor.document.lineCount, 400));
+                analysisLabels = overview.nodes.map(node => node.label);
+                hashSource = 'file:' + editor.document.getText();
+                const newHash = this._computeFunctionHash(hashSource);
+                if (this._lastFunctionHash === newHash && this._lastDiagramType === type &&
+                    this._lastDocumentUri === editor.document.uri.toString()) {
+                    logger.debug('generate(): file overview unchanged, skipping render');
+                    return;
+                }
+                this._lastFunctionHash = newHash;
+            } else if (type === 'class') {
                 logger.debug('generate(): class diagram path');
                 const ext = path.extname(editor.document.uri.fsPath);
                 let classes = parseClasses(editor.document);
@@ -813,6 +1047,8 @@ class LiveUmlSidebar {
                 pendingSummary = { name: func.name, body: func.rawBody || func.body,
                     language: currentLanguage, startLine: func.startLine,
                     imports: summaries.extractImports(editor.document.getText()) };
+                codeMapEntries = buildCodeMap(func, currentLanguage, editor.document);
+                analysisCode = numberedLines(editor.document, func.startLine, func.endLine + 1);
                 logger.debug(`generate(): selectedStateVar=${selectedStateVar}`);
                 if (!tsProvider.isReady()) {
                     logger.debug('generate(): waiting for tree-sitter WASM to be ready');
@@ -880,6 +1116,8 @@ class LiveUmlSidebar {
                     startLine: func.startLine,
                     imports: summaries.extractImports(editor.document.getText())
                 };
+                codeMapEntries = buildCodeMap(func, currentLanguage, editor.document);
+                analysisCode = numberedLines(editor.document, func.startLine, func.endLine + 1);
                 hashSource = targetName + (func.rawBody || func.body) + summaries.extractImports(editor.document.getText());
                 const newHash = this._computeFunctionHash(hashSource);
                 logger.debug(`generate(): ${type} hash check — lastHash=${this._lastFunctionHash?.slice(0,8)}, newHash=${newHash?.slice(0,8)}`);
@@ -894,6 +1132,7 @@ class LiveUmlSidebar {
             this._currentRequestId = requestId;
             this._currentVisualizer?.killProcess();
             this._summaryAbort?.abort();
+            this._analysisAbort?.abort();
             this._currentVisualizer = visualizer;
             logger.debug(`generate(): set _currentRequestId=${requestId}, diagramCode.length=${diagramCode.length}`);
 
@@ -936,6 +1175,9 @@ class LiveUmlSidebar {
                 plantUml: visualizer.isPlantUML() ? diagramCode : '',
                 mermaidCode: visualizer.isMermaid() ? diagramCode : '',
                 diagramMode: this.currentDiagramMode,
+                kind: type,
+                codeMap: codeMapEntries,
+                fileNodes,
                 classCount: classCount,
                 scopeWarning: externalGuesses && externalGuesses.length > 0,
                 externalGuesses,
@@ -943,6 +1185,18 @@ class LiveUmlSidebar {
                 activeStateVar,
                 requestId
             });
+            if (type !== 'class' && analysisCode) {
+                void this._runAnalysis({
+                    code: analysisCode,
+                    diagramCode,
+                    mode: this.currentDiagramMode,
+                    labels: analysisLabels.length ? analysisLabels : analysis.extractLabels(diagramCode, this.currentDiagramMode),
+                    language: currentLanguage,
+                    name: type === 'file' ? path.basename(editor.document.uri.fsPath || 'untitled') : targetName,
+                    requestId,
+                    scope: type
+                });
+            }
 
 
         } catch (err) {
@@ -1112,6 +1366,15 @@ function parseClasses(document) {
     const languageId = document.languageId;
     const provider = registry.getLanguageProvider(languageId);
     return provider.parseClasses(text);
+}
+
+function numberedLines(document, fromLine, toLine) {
+    const lines = [];
+    const last = Math.max(fromLine, Math.min(toLine, document.lineCount));
+    for (let line = fromLine; line < last; line++) {
+        lines.push(`${line + 1}: ${document.lineAt(line).text}`);
+    }
+    return lines.join('\n');
 }
 
 module.exports = { activate };

@@ -1,0 +1,40 @@
+{
+  "overview": {
+    "mode": "plantuml",
+    "type": "file",
+    "analysis": "ready",
+    "issues": [
+      "spectral_power",
+      "moving_average"
+    ],
+    "colored": 2,
+    "sw": 273,
+    "cw": 273
+  },
+  "hover": [
+    "spectral_power",
+    "14: def spectral_power(samples, window_size):",
+    "⚠ Rebuilds constant window inside sample loop · click to explain",
+    "spectral_power: (function) def spectral_power(",
+    "    samples: Any,",
+    "    window_size: Any"
+  ],
+  "details": [
+    "spectral_power",
+    "✕",
+    "line 14",
+    "def spectral_power(samples, window_size):",
+    "spectral_power: (function) def spectral_power(",
+    "    samples: Any,",
+    "    window_size: Any",
+    ") -> float"
+  ],
+  "drill": {
+    "type": "flowchart",
+    "fn": "spectral_power",
+    "kind": "flowchart",
+    "summary": "ready",
+    "analysis": "loading"
+  },
+  "backToFile": true
+}

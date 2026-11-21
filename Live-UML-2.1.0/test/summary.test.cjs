@@ -10,16 +10,33 @@ const summaries=require('../src/summaries');
 function setup(config={},hover=async()=>[]) {
  const settings={'llm.enabled':true,'llm.updateMode':'automatic','llm.apiKey':'test-key',...config};
  const document={languageId:'python',uri:{scheme:'file',fsPath:'/test.py',toString:()=> 'file:///test.py'},getText:()=> 'def add(a, b):\n    return a + b',offsetAt:()=>0,positionAt:()=>({line:0,character:0})};
- const vscode={workspace:{getConfiguration:()=>({get:(k,d)=>settings[k]??d})},commands:{executeCommand:hover},window:{activeTextEditor:{document}},Position:class {constructor(line,character){this.line=line;this.character=character;}}};
+ const vscode={ConfigurationTarget:{Global:1},workspace:{getConfiguration:()=>({get:(k,d)=>settings[k]??d,update:async(k,v)=>{settings[k]=v;}})},commands:{executeCommand:hover},window:{activeTextEditor:{document}},Position:class {constructor(line,character){this.line=line;this.character=character;}}};
  const source=fs.readFileSync(path.join(base,'src/extension.js'),'utf8');
  const mod={exports:{}}; const req=createRequire(path.join(base,'src/extension.js'));
  const context={module:mod,exports:mod.exports,require:n=>n==='vscode'?vscode:req(n),__dirname:path.join(base,'src'),process,console,setTimeout,clearTimeout,AbortController};
  vm.runInNewContext(source+'\ncurrentLanguage="python"; module.exports._test={LiveUmlSidebar,PlantUmlServerManager};',context);
  const sidebar=new mod.exports._test.LiveUmlSidebar({}); const messages=[];
+ sidebar.currentDiagramMode='mermaid';
  sidebar.post=m=>messages.push(m);
  sidebar._currentRequestId=1; sidebar.currentFunctionName='add';
  return {sidebar,messages,document,settings,ServerManager:mod.exports._test.PlantUmlServerManager};
 }
+test('new workspaces default to the whole-file view in PlantUML',()=>{
+ const Sidebar=setup().sidebar.constructor;const sidebar=new Sidebar({globalState:{get:(key,fallback)=>fallback}});
+ assert.equal(sidebar.currentDiagramType,'file');assert.equal(sidebar.currentDiagramMode,'plantuml');
+});
+test('switching providers never reuses another endpoint credential',async()=>{
+ const {sidebar,settings}=setup();const keys=new Map();sidebar.context.secrets={store:async(k,v)=>keys.set(k,v),get:async k=>keys.get(k)};
+ await sidebar.saveApiKey('deepseek-test-key','https://api.deepseek.com/v1');await sidebar.saveApiKey('other-test-key','https://other.example/v1');
+ settings['llm.baseUrl']='https://api.deepseek.com/v1';assert.equal(sidebar._summaryConfig().apiKey,'deepseek-test-key');
+ settings['llm.baseUrl']='https://other.example/v1';assert.equal(sidebar._summaryConfig().apiKey,'other-test-key');
+ settings['llm.baseUrl']='https://new.example/v1';assert.equal(sidebar._summaryConfig().apiKey,'');
+});
+test('saving a complete custom connection persists every public field but not the API key',async()=>{
+ const {sidebar,settings}=setup();const keys=new Map();sidebar.context.secrets={store:async(k,v)=>keys.set(k,v),get:async k=>keys.get(k)};
+ await sidebar.saveConnectionSettings({llmProvider:'custom',llmBaseUrl:'https://custom.example/v1',llmModel:'custom-model',llmTimeoutMs:45000,llmApiKey:'private-test-key',llmEnabled:true,llmUpdateMode:'manual'});
+ assert.equal(settings['llm.provider'],'custom');assert.equal(settings['llm.baseUrl'],'https://custom.example/v1');assert.equal(settings['llm.model'],'custom-model');assert.equal(settings['llm.timeoutMs'],45000);assert.equal(settings['llm.updateMode'],'manual');assert.equal(settings['llm.apiKey'],'test-key');assert.equal(sidebar._summaryConfig().apiKey,'private-test-key');assert.equal(sidebar._savingSettings,false);
+});
 test('renderer preference is restored and updated rather than resetting to Mermaid',async()=>{
  const Sidebar=setup().sidebar.constructor;const saved=new Map([['diagramMode','plantuml']]);const context={globalState:{get:(k,d)=>saved.get(k)??d,update:async(k,v)=>saved.set(k,v)}};
  const first=new Sidebar(context);assert.equal(first.currentDiagramMode,'plantuml');await first.setDiagramMode('mermaid');assert.equal(new Sidebar(context).currentDiagramMode,'mermaid');await first.setDiagramMode('invalid');assert.equal(saved.get('diagramMode'),'mermaid');
@@ -36,7 +53,7 @@ test('summary completes even while diagram rendering is still pending',async()=>
 test('sidebar key is saved in SecretStorage and restored without entering settings or messages',async()=>{
  const secrets=new Map();const {sidebar,settings,messages}=setup();sidebar.context.secrets={store:async(k,v)=>secrets.set(k,v),get:async k=>secrets.get(k)};
  await sidebar.saveApiKey('  private-test-key  ');
- assert.equal(secrets.get('liveUml.llm.apiKey'),'private-test-key');assert.equal(sidebar._summaryConfig().apiKey,'private-test-key');assert.equal(settings['llm.apiKey'],'test-key');assert.ok(!JSON.stringify(messages).includes('private-test-key'));
+ assert.equal(secrets.get(require('../src/llmConfig').secretName('https://api.deepseek.com/v1')),'private-test-key');assert.equal(sidebar._summaryConfig().apiKey,'private-test-key');assert.equal(settings['llm.apiKey'],'test-key');assert.ok(!JSON.stringify(messages).includes('private-test-key'));
  const fresh=setup().sidebar;fresh.context.secrets=sidebar.context.secrets;await fresh.loadApiKey();assert.equal(fresh._summaryConfig().apiKey,'private-test-key');
  await fresh.saveApiKey('');assert.equal(fresh._summaryConfig().apiKey,'private-test-key');
 });
@@ -70,6 +87,10 @@ test('API errors produce a terminal summary error rather than a stuck spinner',a
  const {sidebar,document,messages}=setup();const original=summaries.summarize;summaries.summarize=async()=>{throw new Error('HTTP 401');};
  try {await sidebar._runSummary(req,document,1);assert.equal(messages.at(-1).status,'error');assert.match(messages.at(-1).message,/401/);}finally{summaries.summarize=original;}
 });
+test('provider errors never echo a non-sk API key into the webview',async()=>{
+ const {sidebar,document,messages}=setup({'llm.apiKey':'plain-format-private-key'});const original=summaries.summarize;summaries.summarize=async()=>{throw new Error('HTTP 401 echoed plain-format-private-key');};
+ try{await sidebar._runSummary(req,document,1);assert.equal(messages.at(-1).status,'error');assert.ok(!messages.at(-1).message.includes('plain-format-private-key'));}finally{summaries.summarize=original;}
+});
 test('late results cannot overwrite a newer summary request',async()=>{
  const {sidebar,document,messages}=setup();let finish;const original=summaries.summarize;summaries.summarize=()=>new Promise(r=>{finish=r;});
  try {const pending=sidebar._runSummary(req,document,1);await new Promise(r=>setImmediate(r));sidebar._currentRequestId=2;finish({summary:'outdated'});await pending;assert.equal(messages.filter(m=>m.type==='summary').length,0);}finally{summaries.summarize=original;}
@@ -80,6 +101,11 @@ async function withEndpoint(handler, action) {
  summaries.clearCache();
  try {await action(config);}finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 }
+test('local compatible summaries work without an API key or Authorization header',async()=>{
+ let authorization;await withEndpoint((q,s)=>{authorization=q.headers.authorization;s.end(JSON.stringify({choices:[{message:{content:'{"summary":"local result","inputs":[],"output":"int"}'}}]}));},async config=>{
+ const result=await summaries.summarize({...req,config:{...config,apiKey:''}});assert.equal(result?.summary,'local result');assert.equal(authorization,undefined);
+ });
+});
 test('regenerate bypasses the content cache',async()=>{
  let calls=0;
  await withEndpoint((q,s)=>{calls++;s.end(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:`result ${calls}`,inputs:[],output:'int'})}}]}));},async config=>{

@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+const { isLocalEndpoint } = require('./llmConfig');
 
 const cache = new Map(); // hash -> result
 const MAX_CACHE = 500;
@@ -116,7 +117,7 @@ function parseCompletion(raw) {
  */
 async function summarize({ name, body, language, imports, docs, config, force = false, signal }) {
     if (!config || !config.enabled || !config.baseUrl || !config.model) return null;
-    if (!config.apiKey) return null;            // no key: stay silent, no failed calls
+    if (!config.apiKey && !isLocalEndpoint(config.baseUrl)) return null;
     if (!body || !body.trim()) return null;
 
     const key = hashOf({ name, body, language, docs }) + crypto.createHash('sha256')
@@ -131,7 +132,7 @@ async function summarize({ name, body, language, imports, docs, config, force = 
 
     const raw = await postJson(
         config.baseUrl.replace(/\/$/, '') + '/chat/completions',
-        { Authorization: `Bearer ${config.apiKey}` },
+        config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {},
         {
             model: config.model,
             temperature: 0.2,
@@ -156,4 +157,4 @@ async function summarize({ name, body, language, imports, docs, config, force = 
 
 function clearCache() { cache.clear(); }
 
-module.exports = { summarize, clearCache, extractImports, parseCompletion, hashOf };
+module.exports = { summarize, clearCache, extractImports, parseCompletion, hashOf, postJson };

@@ -1,10 +1,18 @@
 # Live UML
 
-Visualize C, C++, Java, JavaScript, TypeScript, and Python code as live flowcharts, sequence, state, and class diagrams in the sidebar. Diagram generation and rendering run locally with bundled Mermaid and PlantUML. Optional AI summaries send the selected function, imports, and limited hover documentation to your configured model endpoint; use a local endpoint or disable summaries if code must remain on your machine.
+Visualize C, C++, Java, JavaScript, TypeScript, and Python code as live flowcharts, sequence, state, and class diagrams in the sidebar. Diagram generation and rendering run locally with bundled Mermaid and PlantUML. Optional AI features send the selected function or file, imports, limited hover documentation, and diagram source to your configured model endpoint; use a local endpoint or disable them if code must remain on your machine.
 
 ## AI summaries and update controls
 
-Open the sidebar gear, paste your key in **AI API key (DeepSeek / compatible endpoint)**, and click **Save**. The password field is masked; keys entered here use VS Code secret storage, not settings.json. Reopen settings to see **Key configured**; the saved key is never displayed. Leave the field blank to keep the existing key, or enter a replacement and save. This configures only Live UML, not other AI tools.
+Open the sidebar gear for **AI connection & settings**:
+
+1. Choose a **Provider** preset: DeepSeek, OpenAI, OpenRouter, Ollama, LM Studio, or Custom. These use OpenAI-compatible Chat Completions, not native Anthropic Messages or Responses-only endpoints.
+2. Confirm the editable **Base URL** and **Model ID**. Enter a base endpoint (typically ending in `/v1`), not `/chat/completions` or `/models`. Non-DeepSeek presets intentionally leave the model empty rather than guessing a model you may not have.
+3. Paste your **API key**. Keys are masked and stored in VS Code SecretStorage, scoped to the exact normalized base endpoint. The saved key is never sent back into the settings panel. Blank retains only that endpoint's key; changing providers does not reuse the old provider's key. Localhost/loopback endpoints can be used without a key.
+4. Click **Test connection / load models** to check the entered endpoint's `/models` catalog and load suggestions for the Model ID field. This does not save settings or request a completion. A successful catalog check does not prove that every listed model supports Chat Completions; select a compatible text/chat model. Servers without `/models` may still be used by entering the model ID manually and saving.
+5. Set the **Request timeout** (1000–120000 milliseconds), select automatic/manual summary updates, then click **Save**. Diagram/Java settings are available under the expandable section.
+
+This configures only Live UML, not Hermes or other AI tools. Existing DeepSeek keys from earlier versions are migrated into the endpoint-scoped secret slot. Legacy settings-based `liveUml.llm.apiKey` and unscoped DeepSeek environment fallback are restricted to the DeepSeek endpoint; for another endpoint, use the sidebar's secure key field or explicitly pair `LIVEUML_LLM_KEY` with `LIVEUML_LLM_BASE_URL`.
 
 The same panel lets you enable/disable **AI summaries** and choose **Summary updates**:
 
@@ -12,7 +20,7 @@ The same panel lets you enable/disable **AI summaries** and choose **Summary upd
 - **Manual (button only)**: edits still update diagrams, but never trigger AI requests. Click **Generate summary** when wanted.
 - **Regenerate summary** always bypasses the cache and sends a fresh request, in either mode. Also available as **Live UML: Regenerate AI Summary** in the Command Palette.
 
-The same controls are in VS Code Settings as `liveUml.llm.enabled` and `liveUml.llm.updateMode` (`automatic` / `manual`). Endpoint/model settings remain `liveUml.llm.baseUrl` and `liveUml.llm.model`. Configure your own key with `liveUml.llm.apiKey` or the extension-host environment variable `LIVEUML_LLM_KEY` (fallback: `DEEPSEEK_API_KEY`). Settings-based keys are stored in your local VS Code settings; do not commit them to workspace settings or share them.
+The public controls are also in VS Code Settings as `liveUml.llm.provider`, `liveUml.llm.enabled`, `liveUml.llm.updateMode`, `liveUml.llm.baseUrl`, `liveUml.llm.model`, and `liveUml.llm.timeoutMs`. Prefer the sidebar's endpoint-scoped secret storage for credentials. Never commit keys to workspace settings or share them.
 
 Hover documentation collection is bounded to 1.2 seconds; summaries continue without docs if a language extension does not respond. The HTTP request has a total deadline (`liveUml.llm.timeoutMs`, default 30 seconds), including servers that send keep-alive whitespace. Errors are shown in the summary panel without hiding a valid diagram. Superseded requests are cancelled and stale replies cannot overwrite the current function.
 
@@ -52,6 +60,12 @@ Download the generated diagram as PNG or copy the PlantUML code for use in Confl
 ![Exporting the diagram](https://raw.githubusercontent.com/codenaveed/media/main/liveuml/demoexport.png)
 
 ## Usage
+
+**First run:** with no file open, the sidebar shows onboarding: connect a provider (or skip AI), then click **Open demo file** to try the whole flow on a deliberately inefficient Python sample. The demo opens as an untitled file; nothing is executed.
+
+**Whole-file view:** the **File** tab is the default. It shows every function in the active file and call edges between them. Click an uncolored function node (or pick a function from the dropdown) to drill into its flowchart; click **File** to return. Coloured nodes open the issue explanation instead, with an **Open function flowchart** button.
+
+**Hover and algorithmic review:** hover a node to see its source line, that line's code, and language-server hover docs. When `liveUml.llm.analyze` is enabled and an AI endpoint is configured, the model reviews the diagram and source, colours likely inefficiencies (red/amber/yellow), and lists them under **Algorithm review**. Clicking a coloured node or list row shows the explanation, suggestion, hover docs, and **Go to line**. Analysis runs separately from rendering and never hides a valid diagram.
 
 **Jupyter notebooks:** click inside a supported code cell in an `.ipynb` editor. Diagrams and summaries use that active cell's source, without executing the notebook or needing a running kernel. Switching cells updates the function list. Cross-cell class/state discovery is not implemented. Mermaid needs no Java; PlantUML requires a working Java executable and reports a timeout if a local render exceeds 15 seconds. Summary requests run independently of diagram rendering.
 

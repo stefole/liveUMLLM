@@ -2,7 +2,7 @@
   "name": "live-uml",
   "displayName": "Live UML",
   "description": "Live PlantUML flowchart, sequence diagram, state machine and class diagram for C, C++, Java, JavaScript, TypeScript, and Python code",
-  "version": "2.0.10",
+  "version": "2.1.0",
   "publisher": "bitlab",
   "repository": {
     "type": "git",
@@ -118,12 +118,23 @@
           "default": true,
           "description": "Show an LLM-written summary of the selected function above the diagram."
         },
+        "liveUml.llm.provider": {
+          "type": "string",
+          "enum": ["deepseek", "openai", "openrouter", "ollama", "lmstudio", "custom"],
+          "default": "deepseek",
+          "description": "Provider preset selected in the Live UML sidebar. Configure its base URL, model ID, timeout, and endpoint-specific key using the sidebar gear panel. All presets use OpenAI-compatible Chat Completions."
+        },
         "liveUml.llm.updateMode": {
           "type": "string",
           "enum": ["automatic", "manual"],
           "default": "automatic",
           "enumDescriptions": ["Update after function edits (1.2-second debounce); reuse unchanged summaries.", "Only request a summary when Generate/Regenerate summary is pressed."],
           "description": "When to generate AI summaries. The Regenerate summary button always requests a fresh summary."
+        },
+        "liveUml.llm.analyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask the configured model to flag algorithmic inefficiencies and colour the corresponding diagram nodes. Sends the current function/file source and diagram source to that endpoint."
         },
         "liveUml.llm.baseUrl": {
           "type": "string",
@@ -143,6 +154,8 @@
         "liveUml.llm.timeoutMs": {
           "type": "number",
           "default": 30000,
+          "minimum": 1000,
+          "maximum": 120000,
           "description": "Request timeout in milliseconds. Raise it for slow local models."
         }
       }

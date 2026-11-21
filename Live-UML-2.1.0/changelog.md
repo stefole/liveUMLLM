@@ -2,6 +2,22 @@
 
 All notable changes to the Live UML extension will be documented in this file.
 
+## [2.1.0]
+- Add onboarding when no file is open: provider connection form (provider, base URL, model, endpoint-scoped key, timeout, test connection/load models), plus a one-click demo Python file that exercises the full flow.
+- Default renderer is now PlantUML (Java required); Mermaid remains available and is remembered per user once selected.
+- Add a whole-file **File** view: every function in the active file, with call edges when functions call each other. Clicking an uncolored function node drills into its flowchart; the function picker also drills down.
+- Hover any diagram node to see its source line, that line's code, and hover documentation from the active language extension (Pylance for Python). Hover docs are fetched on demand and cached per line.
+- Add algorithmic review: the configured model analyses the diagram plus source, colours nodes by severity, and lists concrete issues. Clicking a coloured node or issue row shows the explanation, suggestion, hover docs, and Go to line.
+- Add `liveUml.llm.analyze` (default true) and a sidebar toggle. Analysis runs independently of diagram rendering and never blocks it.
+- Strip HTML from hover docs, retry reasoning-model JSON once, collapse diagram source by default, and show the file view vertically to fit the sidebar.
+
+## [2.0.11]
+- Add complete sidebar AI connection setup: DeepSeek, OpenAI, OpenRouter, Ollama, LM Studio, and Custom OpenAI-compatible presets; editable base URL, model ID, API key, and timeout.
+- Add Test connection / load models using the entered endpoint's model catalog, with visible success/authentication/network errors and model ID suggestions.
+- Save credentials per normalized endpoint in SecretStorage; switching endpoints never reuses another provider's key. Existing DeepSeek secret storage is migrated safely.
+- Support keyless loopback servers without sending an empty Authorization header. Connection tests do not save unsaved settings or request a paid completion.
+- Preserve unsaved form edits and focus across background diagram/summary updates, and validate connection fields before saving.
+
 ## [2.0.10]
 - Render diagrams at readable native size instead of shrinking every diagram into the sidebar width.
 - Add zoom in/out, Fit to width, and 1:1 controls for both Mermaid and PlantUML. Large diagrams scroll in a bounded viewport; Fit responds to sidebar resizing.

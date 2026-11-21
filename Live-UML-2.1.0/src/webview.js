@@ -1,5 +1,7 @@
 
 
+const { PROVIDERS } = require('./llmConfig');
+
 function getWebviewHtml(mermaidScriptUri, extensionVersion) {
     return `
         <html>
@@ -388,7 +390,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 gap: 4px;
             }
 
-            .diagram-actions button, .diagram-zoom button, #regenerateSummary {
+            .diagram-actions button, .diagram-zoom button, #regenerateSummary, #testConnection {
                 background: var(--bg-tertiary);
                 border: 1px solid var(--border);
                 color: var(--text-secondary);
@@ -399,11 +401,86 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 transition: all 0.15s ease;
             }
 
-            .diagram-actions button:hover, .diagram-zoom button:hover, #regenerateSummary:hover {
+            .diagram-actions button:hover, .diagram-zoom button:hover, #regenerateSummary:hover, #testConnection:hover {
                 background: var(--bg-hover);
                 color: var(--text-primary);
                 border-color: var(--accent);
             }
+
+            .element-hover {
+                position: fixed;
+                z-index: 40;
+                max-width: 320px;
+                padding: 9px 11px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                background: var(--bg-secondary);
+                color: var(--text-primary);
+                box-shadow: 0 8px 24px rgba(0,0,0,.45);
+                font-size: 11px;
+                line-height: 1.5;
+                pointer-events: none;
+            }
+            .element-hover .h-title { color: var(--accent); font-weight: 600; margin-bottom: 3px; }
+            .element-hover .h-line { color: var(--text-muted); font-family: ui-monospace,Consolas,monospace; font-size: 10px; }
+            .element-hover .h-docs { margin-top: 5px; color: var(--text-secondary); white-space: pre-wrap; max-height: 150px; overflow: hidden; }
+            .element-hover .h-issue { margin-top: 5px; color: var(--warning); }
+
+            [data-issue].node-issue-high rect, [data-issue].node-issue-high polygon, [data-issue].node-issue-high path,
+            [data-issue].node-issue-medium rect, [data-issue].node-issue-medium polygon, [data-issue].node-issue-medium path,
+            [data-issue].node-issue-low rect, [data-issue].node-issue-low polygon, [data-issue].node-issue-low path {
+                stroke-width: 3px !important;
+            }
+            [data-issue].node-issue-high rect, [data-issue].node-issue-high polygon, [data-issue].node-issue-high path { stroke: #ff5c5c !important; fill: #3a2026 !important; }
+            [data-issue].node-issue-medium rect, [data-issue].node-issue-medium polygon, [data-issue].node-issue-medium path { stroke: #e2a03f !important; fill: #3a3020 !important; }
+            [data-issue].node-issue-low rect, [data-issue].node-issue-low polygon, [data-issue].node-issue-low path { stroke: #d7ba7d !important; fill: #333022 !important; }
+            [data-issue] text { fill: #ffffff !important; }
+            [data-issue] { cursor: pointer; }
+
+            .analysis-panel {
+                margin: 8px 12px 0;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                background: var(--bg-secondary);
+                font-size: 11px;
+            }
+            .analysis-title { display:flex; align-items:center; justify-content:space-between; color: var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+            .analysis-summary { color: var(--text-secondary); line-height:1.5; }
+            .issue-row { display:flex; gap:7px; align-items:flex-start; padding:6px 0; border-top:1px solid var(--border); cursor:pointer; }
+            .issue-row:hover { color: var(--accent); }
+            .issue-dot { width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+            .issue-dot.high { background:#ff5c5c; } .issue-dot.medium { background:#e2a03f; } .issue-dot.low { background:#d7ba7d; }
+            .issue-title { color: var(--text-primary); font-weight:500; }
+            .issue-meta { color: var(--text-muted); font-size:10px; margin-top:1px; }
+
+            .details-open .element-hover { display: none !important; }
+
+            .element-details {
+                position: fixed;
+                left: 8px;
+                right: 8px;
+                bottom: 8px;
+                z-index: 30;
+                max-height: 48vh;
+                overflow: auto;
+                padding: 10px 12px; border:1px solid var(--accent-dim);
+                border-radius: var(--radius-sm); background: var(--bg-secondary); box-shadow: 0 10px 30px rgba(0,0,0,.5); font-size: 11px;
+            }
+            .element-details .detail-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+            .element-details .detail-label { color: var(--accent); font-weight:600; font-family: ui-monospace,Consolas,monospace; }
+            .element-details .detail-code { background: var(--bg-tertiary); padding:6px 8px; border-radius:4px; margin:6px 0; font-family: ui-monospace,Consolas,monospace; font-size:10px; white-space:pre-wrap; }
+            .element-details .detail-docs { color: var(--text-secondary); white-space:pre-wrap; max-height:100px; overflow:auto; margin:5px 0; }
+            .element-details .detail-issue { border-left:3px solid #ff5c5c; padding-left:8px; margin-top:8px; }
+            .element-details button { margin-top:6px; }
+
+            .onboarding-card { margin-top:14px; padding:12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-secondary); text-align:left; }
+            .onboarding-card h3 { margin:0 0 4px; font-size:12px; color:var(--text-primary); }
+            .onboarding-card p { margin:0 0 8px; font-size:11px; color:var(--text-secondary); line-height:1.5; }
+            .onboarding-card .setting-row { padding:6px 0; }
+            .onboarding-card .setting-input { width:100%; box-sizing:border-box; }
+            .onboarding-card .btn-save, .onboarding-card .btn-cancel { margin-top:8px; }
+            .onboarding-success { color: var(--accent); margin-top:6px; }
 
             .diagram-zoom {
                 display: flex;
@@ -524,14 +601,21 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 border: 1px solid var(--border);
                 border-radius: var(--radius);
                 overflow: hidden;
-                resize: vertical;
+                display: block;
+                height: auto;
+            }
+
+            details.code-section[open] {
                 display: flex;
                 flex-direction: column;
+                resize: vertical;
                 height: 200px;
                 min-height: 60px;
             }
 
             .code-header {
+                cursor: pointer;
+                list-style: none;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -707,6 +791,12 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 font-size: 10px;
             }
 
+            .connection-setting { flex-direction: column; align-items: stretch; gap: 5px; }
+            .connection-setting .setting-input { width: 100%; box-sizing: border-box; text-align: left; }
+            .connection-test { padding: 10px 0; font-size: 11px; }
+            #connectionTestStatus { margin-top: 7px; overflow-wrap: anywhere; }
+            #testConnection:disabled { opacity: 0.6; cursor: wait; }
+
             .toggle-switch {
                 position: relative;
                 width: 36px;
@@ -853,6 +943,23 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 }
 
                 const vscode = acquireVsCodeApi();
+                const providerPresets = ${JSON.stringify(PROVIDERS)};
+                let connectionTestSequence = 0;
+                let connectionKeyTimer;
+                const fieldsCache = {};
+                let hoverState = null;
+                let docsRequestSeq = 0;
+                const docsByLine = {};
+                const hoverElement = document.createElement('div');
+                hoverElement.id = 'elementHover';
+                hoverElement.className = 'element-hover';
+                hoverElement.style.display = 'none';
+                document.body.appendChild(hoverElement);
+                const detailsElement = document.createElement('div');
+                detailsElement.id = 'elementDetails';
+                detailsElement.className = 'element-details';
+                detailsElement.style.display = 'none';
+                document.body.appendChild(detailsElement);
 
                 // Forward any webview runtime error to the extension's Output
                 // channel so a blank panel can be diagnosed without opening the
@@ -875,7 +982,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     classes: [],
                     currentFunction: null,
                     currentClass: null,
-                    diagramType: 'flowchart',
+                    diagramType: 'file',
                     diagramMode: 'plantuml',
                     diagramZoom: 1,
                     diagramZoomMode: 'actual',
@@ -900,6 +1007,17 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     summaryError: '',
                     summaryEnabled: true,
                     summaryUpdateMode: 'automatic',
+                    analysisEnabled: true,
+                    analysis: null,
+                    analysisStatus: 'idle',
+                    analysisError: '',
+                    analysisSummary: '',
+                    elementDetails: null,
+                    codeMap: [],
+                    fileNodes: [],
+                    diagramKind: 'file',
+                    fileName: '',
+                    settingsSaved: false,
                     settings: {
                         javaPath: 'java',
                         classExcludePatterns: 'node_modules, build, bin, dist, target'
@@ -937,6 +1055,8 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.currentFunction = msg.currentFunction;
                             state.summaryEnabled = msg.summaryEnabled !== false;
                             state.summaryUpdateMode = msg.summaryUpdateMode || 'automatic';
+                            state.analysisEnabled = msg.analysisEnabled === true;
+                            state.fileName = msg.fileName || state.fileName;
                             state.currentClass = msg.currentClass;
                             state.stats = msg.stats || state.stats;
                             state.diagramType = msg.diagramType || state.diagramType;
@@ -968,6 +1088,10 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             state.error = null;
                             state.stateVars = [];
                             state.activeStateVar = null;
+                            state.analysis = null;
+                            state.analysisStatus = 'idle';
+                            state.elementDetails = null;
+                            if (msg.settings) state.settings = msg.settings;
                             render();
                             vscode.setState(state);
                             break;
@@ -997,6 +1121,14 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                                 break;
                             }
                             state.lastRequestId = reqId;
+                            state.codeMap = Array.isArray(msg.codeMap) ? msg.codeMap : [];
+                            state.fileNodes = Array.isArray(msg.fileNodes) ? msg.fileNodes : [];
+                            state.diagramKind = msg.kind || state.diagramType;
+                            state.analysis = null;
+                            state.analysisStatus = 'idle';
+                            state.analysisSummary = '';
+                            state.analysisError = '';
+                            state.elementDetails = null;
                             state.isLoading = false;
                             state.diagramSvg = msg.svg;
                             state.plantUmlCode = msg.plantUml;
@@ -1063,8 +1195,65 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         case 'showSettings':
                             verboseLog('showSettings');
                             state.settingsError = '';
+                            state.availableModels = [];
+                            state.connectionTestMessage = '';
+                            state.connectionTestStatus = 'idle';
+                            connectionTestSequence++;
                             state.showSettings = true;
                             state.settings = msg.settings;
+                            render();
+                            break;
+                        case 'connectionKeyStatus': {
+                            const base = document.getElementById('settingLlmBaseUrl');
+                            if (!base || base.value.trim() !== msg.baseUrl) break;
+                            state.settings.hasApiKey = msg.hasApiKey;
+                            document.getElementById('settingLlmApiKey').placeholder = msg.hasApiKey
+                                ? 'Key saved for this endpoint — enter to replace' : 'Paste a key for this endpoint (optional locally)';
+                            break;
+                        }
+                        case 'connectionTestResult':
+                            if (msg.requestId !== connectionTestSequence) break;
+                            state.connectionTestStatus = msg.success ? 'success' : 'error';
+                            state.connectionTestMessage = msg.message;
+                            state.availableModels = msg.success ? msg.models : [];
+                            render();
+                            break;
+                        case 'analysisLoading':
+                            if (msg.requestId !== state.lastRequestId) break;
+                            state.analysisStatus = 'loading';
+                            state.analysisError = '';
+                            render();
+                            break;
+                        case 'analysis':
+                            if (msg.requestId !== state.lastRequestId) break;
+                            state.analysisStatus = msg.skipped ? 'skipped' : 'ready';
+                            state.analysis = msg.skipped ? null : { summary: msg.summary || '', issues: msg.issues || [] };
+                            state.analysisSummary = msg.summary || '';
+                            render();
+                            break;
+                        case 'analysisError':
+                            if (msg.requestId !== state.lastRequestId) break;
+                            state.analysisStatus = 'error';
+                            state.analysisError = msg.message || 'Analysis failed';
+                            render();
+                            break;
+                        case 'symbolDocsResult': {
+                            if (hoverState && hoverState.requestId === msg.requestId) {
+                                docsByLine['line:' + msg.line] = msg.docs || '';
+                                const target = document.getElementById('hoverDocs');
+                                if (target) target.textContent = msg.docs || 'No hover documentation available.';
+                            }
+                            const details = state.elementDetails;
+                            if (!details || details.docsRequestId !== msg.requestId) break;
+                            details.docs = msg.docs || 'No hover documentation available for this location.';
+                            details.docsLoading = false;
+                            fieldsCache[msg.requestId] = msg.docs || '';
+                            render();
+                            break;
+                        }
+                        case 'demoOpened':
+                            state.hasEditor = true;
+                            state.settingsSaved = false;
                             render();
                             break;
                         case 'settingsError':
@@ -1073,6 +1262,8 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             break;
                         case 'settingsSaved':
                             verboseLog('settingsSaved');
+                            state.settingsSaved = true;
+                            state.settings.hasApiKey = true;
                             state.showSettings = false;
                             render();
                             break;
@@ -1158,16 +1349,29 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function render() {
                     const app = document.getElementById('app');
-                    // Preserve an unsaved pasted key across background summary redraws,
-                    // but never put it into persisted webview state or HTML attributes.
-                    const pendingKey = state.showSettings ? (document.getElementById('settingLlmApiKey')?.value || '') : '';
+                    // Keep form edits (including transient password input) in DOM-only
+                    // snapshots, never in persisted webview state or HTML attributes.
+                    const pendingSettings = (state.showSettings || !state.hasEditor) ? Array.from(document.querySelectorAll('.settings-panel input, .settings-panel select, .onboarding-card input, .onboarding-card select'))
+                        .map(input => ({ id: input.id, value: input.value, checked: input.checked, tag: input.tagName })) : [];
+                    const focused = pendingSettings.some(input => input.id === document.activeElement?.id) ? document.activeElement : null;
+                    const focusId = focused?.id;
+                    const advancedOpen = state.showSettings && document.querySelector('.settings-panel details')?.open;
+                    const selection = focused && ['text', 'password'].includes(focused.type) ? [focused.selectionStart, focused.selectionEnd] : null;
                     verboseLog('render(): isLoading=' + state.isLoading + ', hasEditor=' + state.hasEditor + ', functions.length=' + (state.functions ? state.functions.length : 0) + ', classes.length=' + (state.classes ? state.classes.length : 0) + ', error=' + (state.error || 'null') + ', hasSvg=' + (state.diagramSvg ? 'yes' : 'no') + ', mermaidCode=' + (state.mermaidCode ? 'yes' : 'no') + ', renderedMermaid=' + (state.renderedMermaidSvg ? 'yes' : 'no'));
                     if (!state.hasEditor || (Array.isArray(state.functions) && state.functions.length === 0 && Array.isArray(state.classes) && state.classes.length === 0)) {
                         app.innerHTML = renderWelcome();
                     } else {
                         app.innerHTML = renderMain();
-                        const keyInput = document.getElementById('settingLlmApiKey');
-                        if (keyInput && pendingKey) keyInput.value = pendingKey;
+                        const advanced = document.querySelector('.settings-panel details');
+                        if (advanced) advanced.open = !!advancedOpen;
+                        for (const saved of pendingSettings) {
+                            const input = document.getElementById(saved.id);
+                            if (input) { input.value = saved.value; if (input.type === 'checkbox') input.checked = saved.checked; }
+                        }
+                        if (focusId && document.getElementById(focusId)) {
+                            const input = document.getElementById(focusId); input.focus();
+                            if (selection) input.setSelectionRange(...selection);
+                        }
                         attachEvents();
                         applyDiagramSizing();
                         if (state.diagramMode === 'mermaid') {
@@ -1188,6 +1392,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             }
                         }
                     }
+                    syncElementDetails();
                 }
 
                 function diagramDimensions(svg) {
@@ -1244,24 +1449,25 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         <div class="welcome fade-in">
                             <div class="welcome-icon">📊</div>
                             <h2>Live UML</h2>
-                            <p>Generate real-time UML diagrams from your code as you type.</p>
-                            <div class="welcome-steps">
-                                <div class="welcome-step">
-                                    <span class="step-num">1</span>
-                                    <span class="step-text"><strong>Open a file</strong> in any supported language</span>
-                                </div>
-                                <div class="welcome-step">
-                                    <span class="step-num">2</span>
-                                    <span class="step-text"><strong>Click on a function</strong> to see its diagram</span>
-                                </div>
-                                <div class="welcome-step">
-                                    <span class="step-num">3</span>
-                                    <span class="step-text"><strong>Edit your code</strong> and watch the diagram update live</span>
-                                </div>
+                            <p>Whole-file diagrams, function drill-down, hover documentation, and algorithmic review — rendered locally.</p>
+                            <div class="onboarding-card">
+                                <h3>1 · Connect an AI provider</h3>
+                                <p>Needed for summaries, hover insights, and inefficiency analysis. DeepSeek is preselected; any OpenAI-compatible endpoint works. Without a key, diagrams still work.</p>
+                                \${renderConnectionFields()}
+                                \${state.settingsError ? '<div role="alert" style="color:var(--error);">' + escapeHtml(state.settingsError) + '</div>' : ''}
+                                \${state.settingsSaved ? '<div class="onboarding-success">Connection saved. Open a file or the demo to see it in action.</div>' : ''}
+                                <button class="btn-save" onclick="saveSettings()">Save connection</button>
                             </div>
-                            <p style="margin-top: 20px; font-size: 11px; color: var(--text-muted);">
-                                Supports: JavaScript, TypeScript, Python, Java, C, C++
-                            </p>
+                            <div class="onboarding-card">
+                                <h3>2 · Try the demo</h3>
+                                <p>Opens an untitled Python file with a deliberately inefficient hot loop, then shows the file overview, hover docs, and colour-coded analysis.</p>
+                                <button class="btn-save" onclick="openDemoFile()">Open demo file</button>
+                            </div>
+                            <div class="onboarding-card">
+                                <h3>3 · Open your own file</h3>
+                                <p>Open Python, JavaScript, TypeScript, Java, C, C++, or a Jupyter notebook cell. The File tab shows the whole file; click any function node to drill in.</p>
+                                <p style="color:var(--text-muted);margin:0;">Tip: PlantUML is the default renderer. Switch to Mermaid if Java is unavailable.</p>
+                            </div>
                         </div>
                     \`;
                 }
@@ -1278,7 +1484,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function renderMain() {
                     const funcOptions = state.functions.map(f => 
-                        \`<option value="\${f}" \${f === state.currentFunction ? 'selected' : ''}>\${f}</option>\`
+                        \`<option value="\${f}" \${state.diagramKind !== 'file' && f === state.currentFunction ? 'selected' : ''}>\${f}</option>\`
                     ).join('');
 
                     const classOptions = state.classes.map(c => 
@@ -1294,6 +1500,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             \${classOptions || placeholderOption}
                         </select>\` :
                         \`<select class="function-select" id="funcSelect" onchange="selectFunction(this.value)">
+                            \${state.diagramKind === 'file' || state.diagramType === 'file' ? '<option value="" selected>Whole file — jump to a function…</option>' : ''}
                             \${funcOptions || placeholderOption}
                         </select>\`;
 
@@ -1313,6 +1520,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                     const settingsPanel = state.showSettings ? renderSettings() : '';
                     const summaryHtml = renderSummary();
+                    const analysisHtml = renderAnalysisPanel();
 
                     const statusText = state.isLoading ? 'Generating diagram...' :
                         state.error ? 'Error generating diagram' :
@@ -1347,6 +1555,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             \${select}
                         </div>
                         <div class="tabs">
+                            <button class="tab \${state.diagramType === 'file' ? 'active' : ''}" onclick="changeType('file')">File</button>
                             <button class="tab \${state.diagramType === 'flowchart' ? 'active' : ''}" onclick="changeType('flowchart')">Flowchart</button>
                             <button class="tab \${state.diagramType === 'sequence' ? 'active' : ''}" onclick="changeType('sequence')">Sequence</button>
                             <button class="tab \${state.diagramType === 'state' ? 'active' : ''}" onclick="changeType('state')">State</button>
@@ -1356,6 +1565,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         <div class="diagram-container fade-in">
                             \${diagramContent}
                         </div>
+                        \${analysisHtml}
                         <div class="status-bar">
                             <span class="status-dot \${state.isLoading ? 'loading' : state.error ? 'error' : ''}"></span>
                             \${statusText}
@@ -1365,7 +1575,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function renderSummary() {
                     const s = state.summary;
-                    if (!state.summaryEnabled || !state.currentFunction || state.diagramType === 'class') return '';
+                    if (state.diagramKind === 'file' || !state.summaryEnabled || !state.currentFunction || state.diagramType === 'class') return '';
                     const io = [];
                     if (s && s.inputs && s.inputs.length) io.push('in: ' + s.inputs.join(', '));
                     if (s && s.output) io.push('out: ' + s.output);
@@ -1382,49 +1592,63 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                         </div>\`;
                 }
 
+                function renderConnectionFields() {
+                    const provider = state.settings.llmProvider || 'deepseek';
+                    const options = Object.entries(providerPresets).map(([id, preset]) =>
+                        '<option value="' + id + '" ' + (provider === id ? 'selected' : '') + '>' + escapeHtml(preset.label) + '</option>').join('');
+                    const models = (state.availableModels || []).map(id => '<option value="' + escapeAttr(id) + '"></option>').join('');
+                    return \`
+                        <div class="setting-row"><label><input type="checkbox" id="settingLlmEnabled" \${state.settings.llmEnabled !== false ? 'checked' : ''}> AI summaries + code analysis</label></div>
+                        <div class="setting-row connection-setting">
+                            <label class="setting-label" for="settingLlmProvider">Provider</label>
+                            <select class="setting-input" id="settingLlmProvider" onchange="changeProvider(this.value)">\${options}</select>
+                            <div class="setting-desc">OpenAI-compatible Chat Completions. Presets fill the endpoint; the model stays editable.</div>
+                        </div>
+                        <div class="setting-row connection-setting">
+                            <label class="setting-label" for="settingLlmBaseUrl">Base URL</label>
+                            <input class="setting-input wide" id="settingLlmBaseUrl" type="text" spellcheck="false" value="\${escapeAttr(state.settings.llmBaseUrl || '')}" oninput="connectionEndpointChanged()" placeholder="https://your-provider.example/v1">
+                            <div class="setting-desc">Base endpoint only, without /chat/completions or /models.</div>
+                        </div>
+                        <div class="setting-row connection-setting">
+                            <label class="setting-label" for="settingLlmModel">Model ID</label>
+                            <input class="setting-input wide" id="settingLlmModel" type="text" spellcheck="false" list="llmModels" value="\${escapeAttr(state.settings.llmModel || '')}" placeholder="Enter a model ID or load models below">
+                            <datalist id="llmModels">\${models}</datalist>
+                        </div>
+                        <div class="setting-row connection-setting">
+                            <label class="setting-label" for="settingLlmApiKey">API key</label>
+                            <input class="setting-input wide" type="password" id="settingLlmApiKey" autocomplete="new-password" spellcheck="false" placeholder="\${state.settings.hasApiKey ? 'Key saved for this endpoint — enter to replace' : 'Paste a key for this endpoint (optional locally)'}">
+                            <div class="setting-desc">Stored in VS Code secret storage, scoped per endpoint. Blank keeps this endpoint's saved key.</div>
+                        </div>
+                        <div class="setting-row connection-setting">
+                            <label class="setting-label" for="settingLlmTimeoutMs">Request timeout (ms)</label>
+                            <input class="setting-input" id="settingLlmTimeoutMs" type="number" min="1000" max="120000" step="1000" value="\${escapeAttr(state.settings.llmTimeoutMs || 30000)}">
+                        </div>
+                        <div class="connection-test">
+                            <button id="testConnection" onclick="testAiConnection()" \${state.connectionTestStatus === 'testing' ? 'disabled' : ''}>Test connection / load models</button>
+                            <div id="connectionTestStatus" role="status" style="color:\${state.connectionTestStatus === 'error' ? 'var(--error)' : 'var(--text-secondary)'};">\${escapeHtml(state.connectionTestMessage || '')}</div>
+                        </div>
+                        <div class="setting-row connection-setting">
+                            <label for="settingLlmUpdateMode">Summary updates</label>
+                            <select id="settingLlmUpdateMode" class="setting-input">
+                                <option value="automatic" \${state.settings.llmUpdateMode !== 'manual' ? 'selected' : ''}>Automatic (after edits)</option>
+                                <option value="manual" \${state.settings.llmUpdateMode === 'manual' ? 'selected' : ''}>Manual (button only)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row"><label><input type="checkbox" id="settingLlmAnalyze" \${state.settings.llmAnalyze !== false ? 'checked' : ''}> Flag algorithmic inefficiencies on the diagram</label></div>\`;
+                }
+
                 function renderSettings() {
                     return \`
                         <div class="settings-panel fade-in">
-                            <div class="settings-title">
-                                <span>⚙ Settings</span>
-                                <button onclick="closeSettings()" title="Close">✕</button>
-                            </div>
-                            <div class="setting-row">
-                                <div>
-                                    <div class="setting-label">Java Path</div>
-                                    <div class="setting-desc">Path to Java executable</div>
-                                </div>
-                                <input class="setting-input wide" type="text" id="settingJavaPath" value="\${state.settings.javaPath}" placeholder="/usr/bin/java">
-                            </div>
-                            <div class="setting-row">
-                                <div>
-                                    <div class="setting-label">Class Exclude Dirs</div>
-                                    <div class="setting-desc">Comma-separated dirs to skip for class diagram</div>
-                                </div>
-                                <input class="setting-input wide" type="text" id="settingExcludePatterns" value="\${state.settings.classExcludePatterns}" placeholder="node_modules, build, bin">
-                            </div>
-                            <div class="setting-row">
-                                <label><input type="checkbox" id="settingLlmEnabled" \${state.settings.llmEnabled !== false ? 'checked' : ''}> AI summaries</label>
-                            </div>
-                            <div class="setting-row" style="display:block;">
-                                <label class="setting-label" for="settingLlmApiKey">AI API key (DeepSeek / compatible endpoint)</label>
-                                <input class="setting-input wide" type="password" id="settingLlmApiKey" autocomplete="new-password" spellcheck="false" placeholder="\${state.settings.hasApiKey ? 'Key configured — enter to replace' : 'Paste your API key'}" style="width:100%;margin-top:6px;">
-                                <div class="setting-desc">Saved in VS Code secret storage. Leave blank to keep the current key.</div>
-                            </div>
+                            <div class="settings-title"><span>⚙ AI connection & settings</span><button onclick="closeSettings()" title="Close">✕</button></div>
+                            \${renderConnectionFields()}
+                            <details><summary>Diagram / Java settings</summary>
+                                <div class="setting-row connection-setting"><label for="settingJavaPath">Java executable</label><input class="setting-input wide" type="text" id="settingJavaPath" value="\${escapeAttr(state.settings.javaPath || 'java')}" placeholder="/usr/bin/java"></div>
+                                <div class="setting-row connection-setting"><label for="settingExcludePatterns">Class exclude directories</label><input class="setting-input wide" type="text" id="settingExcludePatterns" value="\${escapeAttr(state.settings.classExcludePatterns || '')}" placeholder="node_modules, build, bin"></div>
+                            </details>
                             \${state.settingsError ? '<div role="alert" style="color:var(--error);">' + escapeHtml(state.settingsError) + '</div>' : ''}
-                            <div class="setting-row">
-                                <label for="settingLlmUpdateMode">Summary updates</label>
-                                <select id="settingLlmUpdateMode" class="setting-input">
-                                    <option value="automatic" \${state.settings.llmUpdateMode !== 'manual' ? 'selected' : ''}>Automatic (after edits)</option>
-                                    <option value="manual" \${state.settings.llmUpdateMode === 'manual' ? 'selected' : ''}>Manual (button only)</option>
-                                </select>
-                            </div>
-                            <div class="settings-actions">
-                                <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
-                                <button class="btn-save" onclick="saveSettings()">Save</button>
-                            </div>
-                        </div>
-                    \`;
+                            <div class="settings-actions"><button class="btn-cancel" onclick="closeSettings()">Cancel</button><button class="btn-save" onclick="saveSettings()">Save</button></div>
+                        </div>\`;
                 }
 
                 function renderLoading() {
@@ -1485,7 +1709,7 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     return \`
                         <div class="diagram-header">
                             <div class="diagram-title">
-                                <span class="func-name">\${state.currentFunction}</span>
+                                <span class="func-name">\${escapeHtml(state.diagramKind === 'file' ? (state.fileName || 'File overview') : (state.currentFunction || ''))}</span>
                             </div>
                             <div class="diagram-actions">
                                 <button onclick="copySource()" title="Copy \${sourceLabel} source code to clipboard">📋 Code</button>
@@ -1512,13 +1736,10 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
 
                 function renderSourceCode(label, code) {
                     return \`
-                        <div class="code-section">
-                            <div class="code-header">
-                                <span>\${label} Source</span>
-                                <button onclick="copySource()" title="Copy \${label} source code to clipboard">📋 Copy</button>
-                            </div>
+                        <details class="code-section">
+                            <summary class="code-header"><span>\${label} Source</span><button onclick="event.preventDefault();copySource()" title="Copy \${label} source code to clipboard">📋 Copy</button></summary>
                             <div class="code-content">\${escapeHtml(code)}</div>
-                        </div>
+                        </details>
                     \`;
                 }
 
@@ -1528,7 +1749,90 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     return div.innerHTML;
                 }
 
+                function escapeAttr(value) {
+                    return escapeHtml(String(value ?? '')).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function renderAnalysisPanel() {
+                    if (state.diagramKind === 'class' || state.diagramType === 'class' || !state.analysisEnabled) return '';
+                    let panel = '';
+                    if (state.analysisStatus === 'loading') {
+                        panel = \`<div class="analysis-panel"><div class="analysis-title"><span>Algorithm review</span><span>analysing…</span></div></div>\`;
+                    } else if (state.analysisStatus === 'error') {
+                        panel = \`<div class="analysis-panel"><div class="analysis-title"><span>Algorithm review</span><span>unavailable</span></div><div class="issue-meta">\${escapeHtml(state.analysisError)}</div></div>\`;
+                    } else if (state.analysis && (state.analysis.summary || state.analysis.issues.length)) {
+                        const rows = state.analysis.issues.map(issue => \`
+                            <div class="issue-row" onclick="selectIssue('\${issue.id}')" role="button" tabindex="0" title="Show details">
+                                <span class="issue-dot \${issue.severity}"></span>
+                                <div><div class="issue-title">\${escapeHtml(issue.title)}</div>
+                                <div class="issue-meta">\${issue.line ? 'line ' + issue.line + ' · ' : ''}\${issue.severity} severity · click to explain</div></div>
+                            </div>\`).join('');
+                        panel = \`<div class="analysis-panel">
+                            <div class="analysis-title"><span>Algorithm review</span><span>\${state.analysis.issues.length} issue\${state.analysis.issues.length === 1 ? '' : 's'}</span></div>
+                            \${state.analysis.summary ? '<div class="analysis-summary">' + escapeHtml(state.analysis.summary.slice(0, 260)) + (state.analysis.summary.length > 260 ? '…' : '') + '</div>' : ''}
+                            \${rows || '<div class="issue-meta">No obvious algorithmic inefficiencies found.</div>'}
+                        </div>\`;
+                    }
+                    return panel;
+                }
+
+                function syncElementDetails() {
+                    if (state.elementDetails) {
+                        detailsElement.innerHTML = renderElementDetails();
+                        detailsElement.style.display = 'block';
+                        document.body.classList.add('details-open');
+                        hoverElement.style.display = 'none';
+                    } else {
+                        detailsElement.style.display = 'none';
+                        detailsElement.innerHTML = '';
+                        document.body.classList.remove('details-open');
+                    }
+                }
+
+                function closeElementDetails() {
+                    state.elementDetails = null;
+                    render();
+                }
+
+                function renderElementDetails() {
+                    const d = state.elementDetails;
+                    const issue = d.issue;
+                    return \`
+                        <div class="detail-head"><span class="detail-label">\${escapeHtml(d.label || '')}</span><button onclick="closeElementDetails()" title="Close">✕</button></div>
+                        \${d.line !== null && d.line !== undefined ? '<div class="issue-meta">line ' + (d.line + 1) + '</div>' : ''}
+                        \${d.text ? '<div class="detail-code">' + escapeHtml(d.text) + '</div>' : ''}
+                        <div class="detail-docs">\${d.docsLoading ? 'Fetching hover documentation…' : escapeHtml(d.docs || 'No hover documentation available for this location.')}</div>
+                        \${issue ? \`<div class="detail-issue" style="border-color:\${issue.severity === 'high' ? '#ff5c5c' : issue.severity === 'medium' ? '#e2a03f' : '#d7ba7d'}">
+                            <strong>\${escapeHtml(issue.title)}</strong>
+                            <div style="margin-top:4px;color:var(--text-secondary);">\${escapeHtml(issue.explanation)}</div>
+                            \${issue.suggestion ? '<div style="margin-top:5px;color:var(--text-secondary);"><em>Suggestion:</em> ' + escapeHtml(issue.suggestion) + '</div>' : ''}
+                        </div>\` : ''}
+                        \${d.line !== null && d.line !== undefined ? '<button onclick="revealLine(' + d.line + ')">Go to line</button>' : ''}
+                        \${d.functionName ? '<button onclick="drillFromDetails()">Open function flowchart</button>' : ''}
+                    \`;
+                }
+
+                function drillFromDetails() {
+                    const name = state.elementDetails?.functionName;
+                    if (!name) return;
+                    state.elementDetails = null;
+                    state.currentFunction = name;
+                    state.isLoading = true;
+                    render();
+                    vscode.postMessage({ type: 'drillFunction', functionName: name });
+                }
+
+                function revealLine(line) { vscode.postMessage({ type: 'revealLine', line }); }
+
                 function selectFunction(name) {
+                    if (!name) return;
+                    if (state.diagramType === 'file') {
+                        state.currentFunction = name;
+                        state.isLoading = true;
+                        render();
+                        vscode.postMessage({ type: 'drillFunction', functionName: name });
+                        return;
+                    }
                     if (state.currentFunction === name) return;
                     verboseLog('selectFunction:', name);
                     state.currentFunction = name;
@@ -1579,16 +1883,67 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                 }
 
                 function openSettings() { vscode.postMessage({ type: 'openSettings' }); }
-                function closeSettings() { state.showSettings = false; render(); }
+                function closeSettings() { connectionTestSequence++; state.showSettings = false; render(); }
+
+                function collectSettings() {
+                    const value = id => document.getElementById(id);
+                    return {
+                        javaPath: (value('settingJavaPath')?.value || 'java').trim(),
+                        classExcludePatterns: (value('settingExcludePatterns')?.value || '').trim(),
+                        llmEnabled: value('settingLlmEnabled') ? value('settingLlmEnabled').checked : state.settings.llmEnabled !== false,
+                        llmUpdateMode: value('settingLlmUpdateMode')?.value || 'automatic',
+                        llmProvider: value('settingLlmProvider')?.value || 'deepseek',
+                        llmBaseUrl: (value('settingLlmBaseUrl')?.value || '').trim(),
+                        llmModel: (value('settingLlmModel')?.value || '').trim(),
+                        llmTimeoutMs: Number(value('settingLlmTimeoutMs')?.value || 30000),
+                        llmAnalyze: value('settingLlmAnalyze') ? value('settingLlmAnalyze').checked : state.settings.llmAnalyze !== false,
+                        llmApiKey: value('settingLlmApiKey')?.value || ''
+                    };
+                }
+
+                function openDemoFile() { vscode.postMessage({ type: 'openDemo' }); }
+
+                function changeProvider(provider) {
+                    const preset = providerPresets[provider];
+                    if (!preset) return;
+                    document.getElementById('settingLlmBaseUrl').value = preset.baseUrl;
+                    document.getElementById('settingLlmModel').value = preset.model;
+                    document.getElementById('settingLlmApiKey').value = '';
+                    connectionEndpointChanged(true);
+                }
+
+                function connectionEndpointChanged(fromPreset) {
+                    if (!fromPreset) document.getElementById('settingLlmProvider').value = 'custom';
+                    connectionTestSequence++;
+                    state.availableModels = [];
+                    state.connectionTestStatus = 'idle';
+                    state.connectionTestMessage = '';
+                    state.settings.hasApiKey = false;
+                    state.settingsError = '';
+                    document.querySelector('.settings-panel [role="alert"]')?.remove();
+                    document.getElementById('connectionTestStatus').textContent = '';
+                    document.getElementById('llmModels').innerHTML = '';
+                    document.getElementById('testConnection').disabled = false;
+                    document.getElementById('settingLlmApiKey').placeholder = 'Paste a key for this endpoint (optional locally)';
+                    clearTimeout(connectionKeyTimer);
+                    const baseUrl = document.getElementById('settingLlmBaseUrl').value.trim();
+                    connectionKeyTimer = setTimeout(() => vscode.postMessage({ type: 'connectionKeyStatus', baseUrl }), 250);
+                }
+
+                function testAiConnection() {
+                    const settings = collectSettings();
+                    const requestId = ++connectionTestSequence;
+                    state.connectionTestStatus = 'testing';
+                    state.connectionTestMessage = 'Testing connection and loading model IDs...';
+                    render();
+                    vscode.postMessage({ type: 'testConnection', requestId, settings });
+                }
 
                 function saveSettings() {
-                    const javaPath = document.getElementById('settingJavaPath').value.trim();
-                    const classExcludePatterns = document.getElementById('settingExcludePatterns').value.trim();
-                    const llmEnabled = document.getElementById('settingLlmEnabled').checked;
-                    const llmUpdateMode = document.getElementById('settingLlmUpdateMode').value;
-                    const llmApiKey = document.getElementById('settingLlmApiKey').value;
+                    const settings = collectSettings();
                     document.getElementById('settingLlmApiKey').value = '';
-                    vscode.postMessage({ type: 'saveSettings', settings: { javaPath: javaPath || 'java', classExcludePatterns, llmEnabled, llmUpdateMode, llmApiKey } });
+                    connectionTestSequence++;
+                    vscode.postMessage({ type: 'saveSettings', settings });
                 }
 
                 function refresh() { vscode.postMessage({ type: 'refresh' }); }
@@ -1670,6 +2025,184 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                     img.src = 'data:image/svg+xml;base64,' + btoa(binary);
                 }
 
+                function normalizeLabel(text) {
+                    return String(text || '').toLowerCase().split(String.fromCharCode(96)).join('').replace(/["'’“”]/g, '').replace(/[^a-z0-9_+.]+/g, ' ').replace(/\s+/g, ' ').trim();
+                }
+
+                function findCodeEntry(label) {
+                    const target = normalizeLabel(label);
+                    if (!target) return null;
+                    const fileNode = (state.fileNodes || []).find(node => normalizeLabel(node.label) === target || normalizeLabel(node.name) === target);
+                    if (fileNode) return { line: fileNode.line - 1, text: fileNode.signature || fileNode.name, functionName: fileNode.name, label: fileNode.label };
+                    let best = null, bestScore = 0;
+                    for (const entry of state.codeMap || []) {
+                        for (const candidate of entry.labels || []) {
+                            const value = normalizeLabel(candidate);
+                            if (!value) continue;
+                            let score = 0;
+                            if (value === target) score = 100;
+                            else if (value.startsWith(target) || target.startsWith(value)) score = Math.min(value.length, target.length);
+                            else {
+                                let i = 0;
+                                while (i < value.length && i < target.length && value[i] === target[i]) i++;
+                                if (i >= 6) score = i;
+                            }
+                            if (score > bestScore) { bestScore = score; best = entry; }
+                        }
+                    }
+                    return bestScore >= 6 ? { line: best.line, text: best.text } : null;
+                }
+
+                function issueForLabel(label) {
+                    const target = normalizeLabel(label);
+                    const issues = state.analysis?.issues || [];
+                    return issues.find(issue => {
+                        const value = normalizeLabel(issue.label);
+                        return value === target || (value && (value.includes(target) || target.includes(value)));
+                    }) || null;
+                }
+
+                function clickableGroup(textEl) {
+                    let element = textEl;
+                    for (let i = 0; i < 7 && element && element.tagName !== 'svg'; i++, element = element.parentElement) {
+                        if (element.tagName === 'g' && element.querySelector('rect, polygon, path, circle, ellipse')) return element;
+                    }
+                    return textEl.parentElement;
+                }
+
+                function diagramLabelNodes() {
+                    const svg = document.querySelector('#diagramView svg');
+                    if (!svg) return [];
+                    const groups = [...svg.querySelectorAll('g.node, g.activity, g.entity')];
+                    const texts = [...svg.querySelectorAll('text')]
+                        .filter(node => !node.closest('g.node, g.activity, g.entity'));
+                    return [...groups, ...texts];
+                }
+
+                function bestTextNode(label) {
+                    const target = normalizeLabel(label);
+                    let best = null, bestScore = 0;
+                    diagramLabelNodes().forEach(node => {
+                        const value = normalizeLabel(node.textContent);
+                        if (!value) return;
+                        let score = 0;
+                        if (value === target) score = 100;
+                        else if (value.startsWith(target) || target.startsWith(value)) score = Math.min(value.length, target.length);
+                        else {
+                            let i = 0;
+                            while (i < value.length && i < target.length && value[i] === target[i]) i++;
+                            if (i >= 8) score = i;
+                        }
+                        if (score > bestScore) { bestScore = score; best = node; }
+                    });
+                    return bestScore >= 6 ? best : null;
+                }
+
+                function applyIssueStyles() {
+                    document.querySelectorAll('[data-issue]').forEach(element => {
+                        element.removeAttribute('data-issue');
+                        element.classList.remove('node-issue-high', 'node-issue-medium', 'node-issue-low');
+                    });
+                    const issues = state.analysis?.issues || [];
+                    if (!issues.length) return;
+                    for (const issue of issues) {
+                        const text = bestTextNode(issue.label);
+                        if (!text) continue;
+                        const group = clickableGroup(text);
+                        if (!group) continue;
+                        group.setAttribute('data-issue', issue.id);
+                        group.classList.add('node-issue-' + issue.severity);
+                    }
+                }
+
+                function attachDiagramInteractions() {
+                    const svg = document.querySelector('#diagramView svg');
+                    if (!svg) return;
+                    diagramLabelNodes().forEach(node => {
+                        if (!node.textContent.trim()) return;
+                        node.style.cursor = 'pointer';
+                        node.addEventListener('mouseenter', event => showNodeHover(event, node.textContent));
+                        node.addEventListener('mousemove', event => positionHover(event));
+                        node.addEventListener('mouseleave', hideNodeHover);
+                        node.addEventListener('click', event => {
+                            const label = node.textContent;
+                            const issue = issueForLabel(label);
+                            if (issue) { event.stopPropagation(); showElementDetails(label, issue); return; }
+                            const match = findCodeEntry(label);
+                            if (match?.functionName) {
+                                event.stopPropagation();
+                                state.currentFunction = match.functionName;
+                                state.isLoading = true;
+                                render();
+                                vscode.postMessage({ type: 'drillFunction', functionName: match.functionName });
+                                return;
+                            }
+                            if (match) { event.stopPropagation(); showElementDetails(label, null); }
+                        });
+                    });
+                }
+
+                function positionHover(event) {
+                    const element = document.getElementById('elementHover');
+                    if (!element || element.style.display === 'none') return;
+                    const width = Math.min(320, window.innerWidth - 24);
+                    element.style.left = Math.max(8, Math.min(event.clientX + 14, window.innerWidth - width - 8)) + 'px';
+                    element.style.top = Math.max(8, Math.min(event.clientY + 14, window.innerHeight - 140)) + 'px';
+                }
+
+                function showNodeHover(event, label) {
+                    if (state.elementDetails || document.querySelector('.element-details')) return;
+                    const match = findCodeEntry(label);
+                    if (!match && !issueForLabel(label)) return;
+                    const issue = issueForLabel(label);
+                    const element = document.getElementById('elementHover');
+                    hoverState = { label, line: match?.line, text: match?.text || '', requestId: null };
+                    element.innerHTML = '<div class="h-title">' + escapeHtml(label) + '</div>' +
+                        (match ? '<div class="h-line">' + (match.line + 1) + ': ' + escapeHtml(match.text) + '</div>' : '') +
+                        (issue ? '<div class="h-issue">⚠ ' + escapeHtml(issue.title) + ' · click to explain</div>' : '<div class="h-line">click for docs and code location</div>') +
+                        '<div class="h-docs" id="hoverDocs"></div>';
+                    element.style.display = 'block';
+                    positionHover(event);
+                    if (match && match.line !== null) {
+                        const key = 'line:' + match.line;
+                        if (docsByLine[key]) {
+                            document.getElementById('hoverDocs').textContent = docsByLine[key];
+                        } else {
+                            const requestId = 'hover-' + (++docsRequestSeq);
+                            hoverState.requestId = requestId;
+                            vscode.postMessage({ type: 'symbolDocs', requestId, line: match.line, text: match.text });
+                        }
+                    }
+                }
+
+                function hideNodeHover() {
+                    const element = document.getElementById('elementHover');
+                    if (element) element.style.display = 'none';
+                    hoverState = null;
+                }
+
+                function showElementDetails(label, issue) {
+                    hideNodeHover();
+                    const match = findCodeEntry(label);
+                    const requestId = 'details-' + (++docsRequestSeq);
+                    const fileNode = (state.fileNodes || []).find(node => normalizeLabel(node.label) === normalizeLabel(label));
+                    state.elementDetails = { label, line: match?.line ?? (issue?.line ? issue.line - 1 : null),
+                        text: match?.text || '', docs: '', docsLoading: !!match && match.line !== null,
+                        docsRequestId: requestId, issue: issue || issueForLabel(label), functionName: fileNode?.name || match?.functionName || null };
+                    if (match && match.line !== null) {
+                        vscode.postMessage({ type: 'symbolDocs', requestId, line: match.line, text: match.text });
+                    }
+                    render();
+                }
+
+                function selectIssue(id) {
+                    const issue = (state.analysis?.issues || []).find(item => item.id === id);
+                    if (!issue) return;
+                    const node = bestTextNode(issue.label);
+                    if (node) node.closest('[data-issue], g')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    showElementDetails(issue.label, issue);
+                }
+
                 function attachEvents() {
                     const svg = document.querySelector('.diagram-view svg');
                     if (svg) {
@@ -1692,6 +2225,8 @@ function getWebviewHtml(mermaidScriptUri, extensionVersion) {
                             }
                         });
                     }
+                    attachDiagramInteractions();
+                    applyIssueStyles();
                 }
 
                 function attachMermaidClassClicks() {
